@@ -920,9 +920,11 @@ function makePieceMesh(d){
     const a=k*radial+j, b=k*radial+(j+1)%radial, c=(k+1)*radial+j, e=(k+1)*radial+(j+1)%radial;
     idx.push(a,c,b, b,c,e);
   }
+  const speckly = d.finish==='speckle';
+  const seed = (d.seed!=null? d.seed : (d.h*7.13)%6.283);   // per-piece handmade character
   for(let i=0;i<n;i++){
-    const yn=i/(n-1), yy=yn*d.h, rr=R[i]+Math.sin(yn*70)*.012;
-    const rin=Math.max(rr-(d.t||1),.05), yIn=Math.max(yy,.6);
+    const yn=i/(n-1), yy=yn*d.h, rr0=R[i]+Math.sin(yn*70)*.012;
+    const rin0=Math.max(rr0-(d.t||1),.05), yIn=Math.max(yy,.6);
     let has=false, waxMax=0;
     for(const L of layers){
       if(yn > waxMax && yn <= L.frac+.001){
@@ -932,25 +934,31 @@ function makePieceMesh(d){
       if(L.waxed && L.frac>waxMax) waxMax=L.frac;
     }
     const pool = 1 - (Math.sin(yn*70)<0? .05*-Math.sin(yn*70) : 0);
-    const speckly = d.finish==='speckle';
+    const foot = yn<.09 ? .86+.14*(yn/.09) : 1;              // trimmed foot ring at the base
+    const grav = 1 - clamp(.45-yn,0,.45)*.16;                // glaze pools richer toward the bottom
+    const innerPool = has? 1 - clamp(.3-yn,0,.3)*.4 : 1;     // interior pools dark & deep at the base
+    const lip = i>=n-2;
     for(let j=0;j<radial;j++){
       const a=j/radial*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
-      const rOut = rr + (d.carve && d.carve!=='none'? carveOffset(d.carve, yn, j/radial) : 0);
+      const ov = 1 + .012*Math.sin(2*a+seed) + .006*Math.sin(3*a+i*.15+seed);   // subtle hand-thrown ovality
+      const carveO = (d.carve && d.carve!=='none')? carveOffset(d.carve, yn, j/radial) : 0;
+      const rOut = (rr0+carveO)*foot*ov, rin = rin0*foot*ov;
+      const yv = yy + (lip? .1*Math.sin(3*a+seed) : 0);       // the rim is never perfectly level
       const vseed = i*radial+j;
       const base = .96 + Math.sin(vseed*.191+i*.7)*.02;
       const mott = .97 + Math.sin(vseed*4.7+i*1.3)*.03;
       const spk = speckly? (.82+(Math.sin(vseed*7.31)*.5+.5)*.28) : 1;
-      // outer surface — with a bare clay foot ring & rim break
+      // outer surface — bare clay foot ring, glaze pooling, rusty rim break
       const glzO = has && yn >= .05;
-      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk:1);
+      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav:1);
       if(glzO && yn>.9){ const b=clamp((yn-.9)/.1,0,1)*.5; tmp.copy(paint).lerp(_break,b); cO=tmp; sO*=1+b*.1; }
       let o=(i*radial+j)*3;
-      pos[o]=ca*rOut; pos[o+1]=yy; pos[o+2]=sa*rOut;
+      pos[o]=ca*rOut; pos[o+1]=yv; pos[o+2]=sa*rOut;
       col[o]=cO.r*sO; col[o+1]=cO.g*sO; col[o+2]=cO.b*sO;
-      // inner surface — fully glazed
-      const cI = has? paint : bisqueC, sI = base*(has?pool*mott*spk:1);
+      // inner surface — glazed, pooling darker at the base
+      const cI = has? paint : bisqueC, sI = base*(has?pool*mott*spk*innerPool:1);
       o=((rows-1-i)*radial+j)*3;
-      pos[o]=ca*rin; pos[o+1]=yIn; pos[o+2]=sa*rin;
+      pos[o]=ca*rin; pos[o+1]=Math.max(yv,yIn); pos[o+2]=sa*rin;
       col[o]=cI.r*sI; col[o+1]=cI.g*sI; col[o+2]=cI.b*sI;
     }
   }
@@ -993,9 +1001,9 @@ function loadShelf(){
   });
   layoutShelf();
 }
-function addToShelf(){
+function pieceData(){
   let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
-  const d = {
+  return {
     h:+pot.h.toFixed(2),
     r:Array.from(pot.r).map(v=>+v.toFixed(2)),
     t:+mean.toFixed(2),
@@ -1006,7 +1014,11 @@ function addToShelf(){
     kind:classifyPiece(),
     glazeName:glazeNames(),
     clayName:pot.clay.n,
+    seed:+(rnd(6.283)).toFixed(3),
   };
+}
+function addToShelf(){
+  const d = pieceData();
   shelfPieces.unshift({data:d, mesh:makePieceMesh(d), jx:rnd(-.6,.6), jr:rnd(Math.PI*2)});
   layoutShelf();
   saveShelf();
@@ -1675,6 +1687,7 @@ function refreshStageHUD(){
   setStage($('stageSub').textContent);
 }
 function enterStudio(){
+  if(typeof clearDisplayMesh==='function') clearDisplayMesh();
   const savedClay = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay'));
   if(savedClay && G.fired>=savedClay.unlock) pot.clay=savedClay;
   newLump();
@@ -1910,6 +1923,7 @@ function applyGlazeFire(){
   }
   G.fired++; localStorage.setItem('mudember_fired', G.fired);
   addToShelf();
+  G.lastPieceData = shelfPieces[0].data;          // reuse the exact same piece on the hero display
   rows.push(['Shelf', shelfPieces.length+' piece'+(shelfPieces.length>1?'s':'')]);
   AudioEng.chime(flawless?1.2:1);
   showResult(title, flavor, rows, true);
@@ -1926,11 +1940,17 @@ function showResult(title, flavor, rows, survived=false){
 }
 
 /* ---------------- hero display of a finished piece ---------------- */
+let displayMesh=null;
+function clearDisplayMesh(){
+  if(displayMesh){ scene.remove(displayMesh); displayMesh.geometry.dispose(); displayMesh.material.dispose(); displayMesh=null; }
+  potMesh.visible=true; baseCap.visible=true;
+}
 function framePiece(){
-  potRoot.position.set(0,0,0); pot.y=0;
-  let rMax=0; for(let i=0;i<RINGS;i++) rMax=Math.max(rMax,pot.r[i]);
-  const dist = clamp(Math.max(pot.h*1.9, rMax*4.2), 18, 46);
-  setCam(0, pot.h*.55+2, dist, 0, pot.h*.42, 0);
+  const d=G.lastPieceData;
+  const h = d? d.h : pot.h;
+  let rMax=0; if(d){ for(const v of d.r) rMax=Math.max(rMax,v); } else { for(let i=0;i<RINGS;i++) rMax=Math.max(rMax,pot.r[i]); }
+  const dist = clamp(Math.max(h*1.9, rMax*4.2), 18, 46);
+  setCam(0, h*.55+2, dist, 0, h*.42, 0);
 }
 function enterDisplay(){
   if(!G.lastSurvived){ enterStudio(); return; }
@@ -1939,8 +1959,19 @@ function enterDisplay(){
   $('photoBar').style.display='none';
   $('displayBar').style.display='flex';
   $('displayCard').style.display='block';
-  $('muteBtn').style.display='flex'; $('gearBtn').style.display='none';
-  const sub = `${classifyPiece()} · ${glazeNames()} · ${pot.clay.n}`;
+  $('muteBtn').style.display='flex'; $('musicBtn').style.display='flex'; $('gearBtn').style.display='none';
+  // show the finished piece on the same realistic mesh used by the gallery & shelf
+  clearDisplayMesh();
+  potRoot.position.set(0,0,0); pot.y=0;
+  if(G.lastPieceData){
+    displayMesh = makePieceMesh(G.lastPieceData);
+    displayMesh.castShadow = renderer.shadowMap.enabled;
+    displayMesh.position.set(0,0,0);
+    scene.add(displayMesh);
+    potMesh.visible=false; baseCap.visible=false;
+  }
+  const d=G.lastPieceData||{};
+  const sub = `${d.kind||classifyPiece()} · ${d.glazeName||glazeNames()} · ${d.clayName||pot.clay.n}`;
   $('displayCard').innerHTML = `<div class="dTitle">${G.lastTitle||'Your piece'}</div><div class="dSub">${sub}</div>`;
   framePiece();
   banner('here it is ✨', 1.4);
@@ -2539,6 +2570,7 @@ function tick(now){
     if(lampShade) lampShade.material.emissiveIntensity = .4*flick;
   }
   if(catGroup) catGroup.scale.set(1, 1+Math.sin(now*.0022)*.03, 1);   // slow breath
+  if(displayMesh && (G.state==='display'||G.state==='photo')) displayMesh.rotation.y = spin;
 
   wheel.rotation.y = spin;
 
