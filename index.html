@@ -899,32 +899,54 @@ const SHELF_SLOTS = [
 const shelfPieces = [];
 window.shelfPieces = shelfPieces;
 
+/* crackle/craze glaze texture — a fine cellular network of hairline cracks */
+function makeCrackleTex(){
+  const c=document.createElement('canvas'); c.width=c.height=512;
+  const g=c.getContext('2d');
+  g.fillStyle='#ffffff'; g.fillRect(0,0,512,512);
+  g.strokeStyle='rgba(38,30,26,.34)'; g.lineWidth=1.1; g.lineCap='round';
+  const S=11, cell=512/S, P=[];
+  for(let y=0;y<=S;y++){ P[y]=[]; for(let x=0;x<=S;x++) P[y][x]=[x*cell+rnd(-cell*.34,cell*.34), y*cell+rnd(-cell*.34,cell*.34)]; }
+  const seg=(a,b)=>{ g.beginPath(); g.moveTo(a[0],a[1]);
+    g.quadraticCurveTo((a[0]+b[0])/2+rnd(-4,4),(a[1]+b[1])/2+rnd(-4,4), b[0],b[1]); g.stroke(); };
+  for(let y=0;y<=S;y++) for(let x=0;x<=S;x++){
+    if(x<S && Math.random()<.9) seg(P[y][x],P[y][x+1]);
+    if(y<S && Math.random()<.9) seg(P[y][x],P[y+1][x]);
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,4);
+  return t;
+}
+const crackleTex = makeCrackleTex();
+
 /* build a static keepsake mesh from serialized piece data */
 function makePieceMesh(d){
   const n=d.r.length, radial=44;
-  const rows=n*2, pos=new Float32Array(rows*radial*3), col=new Float32Array(rows*radial*3);
+  const bodyV = n*2*radial, footV = 2*radial+1, totalV = bodyV+footV;
+  const rows=n*2;
+  const pos=new Float32Array(totalV*3), col=new Float32Array(totalV*3), uv=new Float32Array(totalV*2);
   const geo=new THREE.BufferGeometry();
   const bisqueC = new THREE.Color(d.bisque||0xc9926a);
-  // smooth the saved profile so shelf/gallery pieces read as clean thrown forms
   const R = Float32Array.from(d.r);
-  for(let pass=0;pass<3;pass++){
-    const tmp=Float32Array.from(R);
-    for(let i=1;i<n-1;i++) R[i]=tmp[i]+(tmp[i-1]+tmp[i+1]-2*tmp[i])*.25;
-  }
-  // layer stack (older saves carried a single glaze+frac)
+  for(let pass=0;pass<3;pass++){ const tmp=Float32Array.from(R); for(let i=1;i<n-1;i++) R[i]=tmp[i]+(tmp[i-1]+tmp[i+1]-2*tmp[i])*.25; }
   const layers = (d.layers || (d.glaze? [{c:d.glaze, frac:d.frac||0}] : []))
-    .map(l=>({cC:new THREE.Color(l.c), frac:l.frac, waxed:!!l.waxed}));
+    .map(l=>({cC:new THREE.Color(l.c), frac:l.frac, waxed:!!l.waxed, react:l.react||'none'}));
   const paint = new THREE.Color(), tmp = new THREE.Color();
+  const speckly = d.finish==='speckle';
+  const seed = (d.seed!=null? d.seed : (d.h*7.13)%6.283);
+  // reactive glaze character comes from the outermost layer
+  const topReact = layers.length? layers[layers.length-1].react : 'none';
+  const craze = topReact==='craze', iron = topReact==='iron', streak = topReact==='streak';
+  const rbStart = iron? .74 : .9, rbAmt = iron? .8 : .5, breakC = iron? _breakIron : _break;
+  const FOOT_H = clamp(d.h*.05+.4, .5, 1.1), floorY = FOOT_H+.4;
+
   const idx=[];
   for(let k=0;k<rows-1;k++) for(let j=0;j<radial;j++){
     const a=k*radial+j, b=k*radial+(j+1)%radial, c=(k+1)*radial+j, e=(k+1)*radial+(j+1)%radial;
     idx.push(a,c,b, b,c,e);
   }
-  const speckly = d.finish==='speckle';
-  const seed = (d.seed!=null? d.seed : (d.h*7.13)%6.283);   // per-piece handmade character
   for(let i=0;i<n;i++){
-    const yn=i/(n-1), yy=yn*d.h, rr0=R[i]+Math.sin(yn*70)*.012;
-    const rin0=Math.max(rr0-(d.t||1),.05), yIn=Math.max(yy,.6);
+    const yn=i/(n-1), yy=yn*d.h+FOOT_H, rr0=R[i]+Math.sin(yn*70)*.012;
+    const rin0=Math.max(rr0-(d.t||1),.05), yIn=Math.max(yy,floorY);
     let has=false, waxMax=0;
     for(const L of layers){
       if(yn > waxMax && yn <= L.frac+.001){
@@ -934,44 +956,73 @@ function makePieceMesh(d){
       if(L.waxed && L.frac>waxMax) waxMax=L.frac;
     }
     const pool = 1 - (Math.sin(yn*70)<0? .05*-Math.sin(yn*70) : 0);
-    const foot = yn<.09 ? .86+.14*(yn/.09) : 1;              // trimmed foot ring at the base
-    const grav = 1 - clamp(.45-yn,0,.45)*.16;                // glaze pools richer toward the bottom
-    const innerPool = has? 1 - clamp(.3-yn,0,.3)*.4 : 1;     // interior pools dark & deep at the base
+    const grav = 1 - clamp(.45-yn,0,.45)*.16;
+    const innerPool = has? 1 - clamp(.3-yn,0,.3)*.4 : 1;
     const lip = i>=n-2;
     for(let j=0;j<radial;j++){
       const a=j/radial*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
-      const ov = 1 + .012*Math.sin(2*a+seed) + .006*Math.sin(3*a+i*.15+seed);   // subtle hand-thrown ovality
+      const ov = 1 + .012*Math.sin(2*a+seed) + .006*Math.sin(3*a+i*.15+seed);
       const carveO = (d.carve && d.carve!=='none')? carveOffset(d.carve, yn, j/radial) : 0;
-      const rOut = (rr0+carveO)*foot*ov, rin = rin0*foot*ov;
-      const yv = yy + (lip? .1*Math.sin(3*a+seed) : 0);       // the rim is never perfectly level
+      const rOut = (rr0+carveO)*ov, rin = rin0*ov;
+      const yv = yy + (lip? .1*Math.sin(3*a+seed) : 0);
       const vseed = i*radial+j;
       const base = .96 + Math.sin(vseed*.191+i*.7)*.02;
       const mott = .97 + Math.sin(vseed*4.7+i*1.3)*.03;
       const spk = speckly? (.82+(Math.sin(vseed*7.31)*.5+.5)*.28) : 1;
-      // outer surface — bare clay foot ring, glaze pooling, rusty rim break
+      const st = streak? (1 + .16*Math.sin(a*6+seed*2)*Math.sin(yn*7+seed)) : 1;   // variegated streaks
+      // outer surface — bare clay foot, pooling, reactive rim break
       const glzO = has && yn >= .05;
-      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav:1);
-      if(glzO && yn>.9){ const b=clamp((yn-.9)/.1,0,1)*.5; tmp.copy(paint).lerp(_break,b); cO=tmp; sO*=1+b*.1; }
-      let o=(i*radial+j)*3;
+      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav*st:1);
+      if(glzO && yn>rbStart){ const b=clamp((yn-rbStart)/(1-rbStart),0,1)*rbAmt; tmp.copy(paint).lerp(breakC,b); cO=tmp; sO*=1+b*(iron?-.12:.1); }
+      let o=(i*radial+j)*3, u=(i*radial+j)*2;
       pos[o]=ca*rOut; pos[o+1]=yv; pos[o+2]=sa*rOut;
       col[o]=cO.r*sO; col[o+1]=cO.g*sO; col[o+2]=cO.b*sO;
-      // inner surface — glazed, pooling darker at the base
-      const cI = has? paint : bisqueC, sI = base*(has?pool*mott*spk*innerPool:1);
-      o=((rows-1-i)*radial+j)*3;
+      uv[u]=j/radial; uv[u+1]=i/n;
+      // inner surface
+      const cI = has? paint : bisqueC, sI = base*(has?pool*mott*spk*innerPool*st:1);
+      o=((rows-1-i)*radial+j)*3; u=((rows-1-i)*radial+j)*2;
       pos[o]=ca*rin; pos[o+1]=Math.max(yv,yIn); pos[o+2]=sa*rin;
       col[o]=cI.r*sI; col[o+1]=cI.g*sI; col[o+2]=cI.b*sI;
+      uv[u]=j/radial; uv[u+1]=(rows-1-i)/n;
     }
   }
+  // ---- recessed foot ring: a trimmed foot the pot stands on, tucked under the base ----
+  const R0 = R[0], footR = Math.max(R0*.72, .45);
+  const botC = tmp.copy(bisqueC).multiplyScalar(.7), botArr=[botC.r,botC.g,botC.b];
+  const topArr=[bisqueC.r*.9, bisqueC.g*.9, bisqueC.b*.9];
+  for(let j=0;j<radial;j++){
+    const a=j/radial*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+    let o=(bodyV+j)*3;                      // bottom ring @ y0
+    pos[o]=ca*footR; pos[o+1]=0; pos[o+2]=sa*footR;
+    col[o]=botArr[0]; col[o+1]=botArr[1]; col[o+2]=botArr[2];
+    uv[(bodyV+j)*2]=j/radial; uv[(bodyV+j)*2+1]=0;
+    o=(bodyV+radial+j)*3;                   // top ring @ FOOT_H (meets body base)
+    pos[o]=ca*R0; pos[o+1]=FOOT_H; pos[o+2]=sa*R0;
+    col[o]=topArr[0]; col[o+1]=topArr[1]; col[o+2]=topArr[2];
+    uv[(bodyV+radial+j)*2]=j/radial; uv[(bodyV+radial+j)*2+1]=0;
+  }
+  const cVi=bodyV+2*radial;                 // centre of the foot underside
+  pos[cVi*3]=0; pos[cVi*3+1]=.12; pos[cVi*3+2]=0;
+  col[cVi*3]=botArr[0]*.85; col[cVi*3+1]=botArr[1]*.85; col[cVi*3+2]=botArr[2]*.85;
+  const bRing=j=>bodyV+j, tRing=j=>bodyV+radial+j;
+  for(let j=0;j<radial;j++){
+    const j1=(j+1)%radial;
+    idx.push(bRing(j),tRing(j),bRing(j1),  bRing(j1),tRing(j),tRing(j1));  // foot wall (undercut)
+    idx.push(cVi,bRing(j1),bRing(j));                                       // underside
+  }
+
   geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
   geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv,2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
   const fin = d.finish||'gloss';
   const mat = new THREE.MeshPhysicalMaterial({
     color:0xffffff, vertexColors:true, envMapIntensity:.42,
-    roughness: fin==='gloss'?.2:fin==='satin'?.45:.62,
-    clearcoat: fin==='gloss'?.7:fin==='satin'?.3:.1, clearcoatRoughness:.32,
+    roughness: craze?.14 : fin==='gloss'?.2:fin==='satin'?.45:.62,
+    clearcoat: craze?.85 : fin==='gloss'?.7:fin==='satin'?.3:.1, clearcoatRoughness:.3,
   });
+  if(craze) mat.map = crackleTex;           // hairline craze network
   return new THREE.Mesh(geo, mat);
 }
 function layoutShelf(){
@@ -1007,7 +1058,7 @@ function pieceData(){
     h:+pot.h.toFixed(2),
     r:Array.from(pot.r).map(v=>+v.toFixed(2)),
     t:+mean.toFixed(2),
-    layers:pot.layers.map(l=>({c:'#'+l.cC.getHexString(), frac:+l.frac.toFixed(2), waxed:!!l.waxed})),
+    layers:pot.layers.map(l=>({c:'#'+l.cC.getHexString(), frac:+l.frac.toFixed(2), waxed:!!l.waxed, react:l.react||'none'})),
     bisque:'#'+pot.clay.bisqueC.getHexString(),
     carve:pot.carve,
     finish:glazeFinish(),
@@ -1074,6 +1125,7 @@ const _paintA = new THREE.Color(), _paintB = new THREE.Color();
 function glazeFinish(){ return pot.layers.length? pot.layers[pot.layers.length-1].f : 'gloss'; }
 const GLAZE_FOOT = .05;                         // bottom of the outside is wiped bare
 const _break = new THREE.Color(0xcaa47a);       // rusty tone where glaze runs thin on rims
+const _breakIron = new THREE.Color(0x6e4222);   // darker iron-rust break for tenmoku/rust glazes
 function repaintColors(){
   const col = potGeo.attributes.color.array;
   const speckly = glazeFinish()==='speckle';
@@ -1381,15 +1433,17 @@ function matchPct(){
 }
 
 /* ---------------- glazes & piece naming ---------------- */
+// react: how the glaze behaves in the fire — 'craze' (crackle network),
+// 'iron' (breaks dark rust on rims/edges), 'streak' (variegated running), or none
 const GLAZES = [
   {n:'Ash White', c:0xe8e2d4, f:'satin'},  {n:'Ember Red', c:0xb03a24, f:'gloss'},
   {n:'Deep Teal', c:0x1f6a6a, f:'gloss'},  {n:'Honey',     c:0xc98a2e, f:'gloss'},
-  {n:'Midnight',  c:0x27304a, f:'satin'},  {n:'Celadon',   c:0x9ec4a0, f:'gloss'},
-  {n:'Oxblood',   c:0x6a1420, f:'gloss'},  {n:'Sunbloom',  c:0xe0b83a, f:'satin'},
-  {n:'Speckled Ash', c:0xb8b0a0, f:'speckle'}, {n:'Tenmoku', c:0x38200e, f:'speckle'},
-  {n:'Lavender',  c:0x8a7ab0, f:'satin'},  {n:'Sage',      c:0x8fa06a, f:'satin'},
-  {n:'Cobalt',    c:0x2440a0, f:'gloss'},  {n:'Plum',      c:0x5a2a48, f:'gloss'},
-  {n:'Sea Green', c:0x3a9a8a, f:'gloss'},  {n:'Rust',      c:0xb2622a, f:'speckle'},
+  {n:'Midnight',  c:0x27304a, f:'satin'},  {n:'Celadon',   c:0x9ec4a0, f:'gloss', react:'craze'},
+  {n:'Oxblood',   c:0x6a1420, f:'gloss', react:'streak'},  {n:'Sunbloom',  c:0xe0b83a, f:'satin'},
+  {n:'Speckled Ash', c:0xb8b0a0, f:'speckle'}, {n:'Tenmoku', c:0x38200e, f:'speckle', react:'iron'},
+  {n:'Lavender',  c:0x8a7ab0, f:'satin'},  {n:'Sage',      c:0x8fa06a, f:'satin', react:'craze'},
+  {n:'Cobalt',    c:0x2440a0, f:'gloss'},  {n:'Plum',      c:0x5a2a48, f:'gloss', react:'streak'},
+  {n:'Sea Green', c:0x3a9a8a, f:'gloss', react:'craze'},  {n:'Rust',      c:0xb2622a, f:'speckle', react:'iron'},
   {n:'Charcoal',  c:0x2e2c2a, f:'satin'},  {n:'Blush',     c:0xe0a890, f:'satin'},
 ];
 function classifyPiece(){
@@ -1976,6 +2030,7 @@ function enterDisplay(){
   framePiece();
   banner('here it is ✨', 1.4);
 }
+window.__enterDisplay = enterDisplay;
 $('dispNew').onclick = ()=>{ $('displayBar').style.display='none'; $('displayCard').style.display='none'; enterStudio(); };
 $('dispGallery').onclick = ()=> openGallery('display');
 $('dispPhoto').onclick = ()=>{
@@ -2441,7 +2496,7 @@ function tick(now){
       if(!G._dipLayer){
         if(pot.layers.length>=4) G._dipLayer = pot.layers[pot.layers.length-1];
         else {
-          G._dipLayer = { n:pot.activeGlaze.n, f:pot.activeGlaze.f,
+          G._dipLayer = { n:pot.activeGlaze.n, f:pot.activeGlaze.f, react:pot.activeGlaze.react||'none',
             cC:new THREE.Color(pot.activeGlaze.c), frac:0, thk:0, waxed:false };
           pot.layers.push(G._dipLayer);
         }

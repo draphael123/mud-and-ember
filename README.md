@@ -23,8 +23,10 @@ CDN). No build step — open `index.html`.
 - **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
   **glaze fire**. Both firings roll real risk from your shortcuts: wet clay and air
   bubbles burst, thin walls split, heavy glaze runs.
-- Ten forms and eighteen glazes with real-ceramic finishing — bare-clay foot rings,
-  glaze breaking rusty on the rims, gentle mottling, gloss / satin / speckle sheens.
+- Ten forms and eighteen glazes with real-ceramic finishing — a trimmed foot ring
+  the pot stands on, glaze pooling and breaking rusty on the rims, gentle mottling,
+  and reactive glazes: **celadon/sage craze** (hairline crackle), **tenmoku/rust
+  break dark on the rims** (iron), **oxblood/plum streak** (variegated running).
 - Three clay bodies (stoneware unlocks at 3 fired, porcelain at 8), a full brick-kiln
   firing cinematic, and a living studio (hanging lamp, potted plant, a napping cat).
 - Every finished piece is shown off on a rotating display, saved to your persistent
