@@ -18,8 +18,11 @@ CDN). No build step — open `index.html`.
   **drag ↑** near the rim to pull taller
 - **Rib** the wet wall anytime to smooth it into a clean, true curve — your first
   pot can't break, so learn freely
-- At leather-hard: **trim** to even the walls, **carve** decoration (rings / wave /
-  chatter)
+- At leather-hard: **trim** to even the walls, **carve** decoration (rings, wave,
+  chatter, fluting, facets, dimples, spiral)
+- Every firing bakes a unique **fired character** — subtle belly/waist, lean, uneven
+  rim, warping, glaze colour-shift and drips — so no two pieces come out alike, even
+  from the same shape and glaze. Each piece earns a **★ star rating** for craft.
 - **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
   **glaze fire**. Both firings roll real risk from your shortcuts: wet clay and air
   bubbles burst, thin walls split, heavy glaze runs.
@@ -27,8 +30,9 @@ CDN). No build step — open `index.html`.
   the pot stands on, glaze pooling and breaking rusty on the rims, gentle mottling,
   and reactive glazes: **celadon/sage craze** (hairline crackle), **tenmoku/rust
   break dark on the rims** (iron), **oxblood/plum streak** (variegated running).
-- Three clay bodies (stoneware unlocks at 3 fired, porcelain at 8), a full brick-kiln
-  firing cinematic, and a living studio (hanging lamp, potted plant, a napping cat).
+- Five clay bodies (red clay, stoneware, black clay and porcelain unlock as you fire
+  pieces), a full brick-kiln firing cinematic, and a living studio (hanging lamp,
+  potted plant, a napping cat).
 - Every finished piece is shown off on a rotating display, saved to your persistent
   **My Gallery**, and lined up on the studio shelf. Photo mode exports a PNG.
 - **Music player** with four tracks (one pre-rendered, three generative) — skip,

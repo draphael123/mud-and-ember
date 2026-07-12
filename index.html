@@ -78,7 +78,8 @@
   .galCard { background:linear-gradient(180deg,rgba(44,27,22,.9),rgba(24,14,11,.94)); border:2px solid #6d4530;
     border-radius:12px; padding:8px; text-align:center; }
   .galCard img { width:100%; border-radius:8px; display:block; background:radial-gradient(circle at 50% 35%, #3a2a24, #180e0c); }
-  .galCard .gName { font-size:12px; font-weight:bold; color:#ffd9a0; margin-top:6px; }
+  .galCard .gStars { color:#ffcf4a; font-size:12px; letter-spacing:1px; margin-top:5px; }
+  .galCard .gName { font-size:12px; font-weight:bold; color:#ffd9a0; margin-top:3px; }
   .galCard .gMeta { font-size:10px; opacity:.75; margin-top:2px; letter-spacing:.3px; }
   #galleryEmpty { margin-top:28px; font-size:14px; opacity:.8; line-height:1.6; }
 
@@ -384,9 +385,13 @@ const diff = ()=>DIFF[SET.diff]||DIFF.classic;
 const CLAYS = [
   { key:'earthen',  n:'Earthenware', emoji:'',   unlock:0,
     wet:0xa85f34, dry:0xc88651, bisque:0xd89a6a, shock:1,   dryRate:1 },
-  { key:'stone',    n:'Stoneware',   emoji:'',   unlock:3,
+  { key:'red',      n:'Red Clay',    emoji:'',   unlock:2,
+    wet:0x9a4630, dry:0xbc5c40, bisque:0xc2694a, shock:1.05,dryRate:1 },
+  { key:'stone',    n:'Stoneware',   emoji:'',   unlock:4,
     wet:0x7a6650, dry:0xa89279, bisque:0xbaa588, shock:.85, dryRate:.9 },
-  { key:'porcelain',n:'Porcelain',   emoji:'',   unlock:8,
+  { key:'black',    n:'Black Clay',  emoji:'',   unlock:6,
+    wet:0x3a3632, dry:0x565049, bisque:0x655d54, shock:1.1, dryRate:1.05 },
+  { key:'porcelain',n:'Porcelain',   emoji:'',   unlock:9,
     wet:0xb0aca2, dry:0xdcd8ce, bisque:0xefebe2, shock:1.45,dryRate:1.25 },
 ];
 CLAYS.forEach(c=>{ c.wetC=new THREE.Color(c.wet); c.dryC=new THREE.Color(c.dry); c.bisqueC=new THREE.Color(c.bisque); });
@@ -928,11 +933,14 @@ function makePieceMesh(d){
   const bisqueC = new THREE.Color(d.bisque||0xc9926a);
   const R = Float32Array.from(d.r);
   for(let pass=0;pass<3;pass++){ const tmp=Float32Array.from(R); for(let i=1;i<n-1;i++) R[i]=tmp[i]+(tmp[i-1]+tmp[i+1]-2*tmp[i])*.25; }
+  const ch = d.char || {};                         // per-piece fired character (variety)
   const layers = (d.layers || (d.glaze? [{c:d.glaze, frac:d.frac||0}] : []))
-    .map(l=>({cC:new THREE.Color(l.c), frac:l.frac, waxed:!!l.waxed, react:l.react||'none'}));
+    .map(l=>{ const cC=new THREE.Color(l.c); if(ch.hs||ch.ls) cC.offsetHSL(ch.hs||0,0,ch.ls||0); return {cC, frac:l.frac, waxed:!!l.waxed, react:l.react||'none'}; });
   const paint = new THREE.Color(), tmp = new THREE.Color();
   const speckly = d.finish==='speckle';
   const seed = (d.seed!=null? d.seed : (d.h*7.13)%6.283);
+  const ovA = ch.ov!=null? ch.ov : .014, rimA = ch.rim!=null? ch.rim : .1;
+  const leanX0 = (ch.lean||0)*Math.cos(ch.leanA||0), leanZ0 = (ch.lean||0)*Math.sin(ch.leanA||0);
   // reactive glaze character comes from the outermost layer
   const topReact = layers.length? layers[layers.length-1].react : 'none';
   const craze = topReact==='craze', iron = topReact==='iron', streak = topReact==='streak';
@@ -945,8 +953,11 @@ function makePieceMesh(d){
     idx.push(a,c,b, b,c,e);
   }
   for(let i=0;i<n;i++){
-    const yn=i/(n-1), yy=yn*d.h+FOOT_H, rr0=R[i]+Math.sin(yn*70)*.012;
+    const yn=i/(n-1), yy=yn*d.h+FOOT_H;
+    const bulge = 1 + (ch.ba||0)*Math.exp(-Math.pow((yn-(ch.by!=null?ch.by:.5))/.2,2));   // unique belly/waist
+    const rr0=(R[i]+Math.sin(yn*70)*.012)*bulge;
     const rin0=Math.max(rr0-(d.t||1),.05), yIn=Math.max(yy,floorY);
+    const leanX=leanX0*yn*d.h, leanZ=leanZ0*yn*d.h;                                        // slight kiln lean
     let has=false, waxMax=0;
     for(const L of layers){
       if(yn > waxMax && yn <= L.frac+.001){
@@ -961,27 +972,33 @@ function makePieceMesh(d){
     const lip = i>=n-2;
     for(let j=0;j<radial;j++){
       const a=j/radial*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
-      const ov = 1 + .012*Math.sin(2*a+seed) + .006*Math.sin(3*a+i*.15+seed);
+      const ov = 1 + ovA*Math.sin(2*a+(ch.ovp||seed)) + ovA*.5*Math.sin(3*a+i*.15+seed);
       const carveO = (d.carve && d.carve!=='none')? carveOffset(d.carve, yn, j/radial) : 0;
       const rOut = (rr0+carveO)*ov, rin = rin0*ov;
-      const yv = yy + (lip? .1*Math.sin(3*a+seed) : 0);
+      const yv = yy + (lip? rimA*Math.sin(3*a+(ch.ovp||seed)) : 0);
       const vseed = i*radial+j;
       const base = .96 + Math.sin(vseed*.191+i*.7)*.02;
       const mott = .97 + Math.sin(vseed*4.7+i*1.3)*.03;
       const spk = speckly? (.82+(Math.sin(vseed*7.31)*.5+.5)*.28) : 1;
       const st = streak? (1 + .16*Math.sin(a*6+seed*2)*Math.sin(yn*7+seed)) : 1;   // variegated streaks
+      // glaze runs/drips from the rim — unique per piece
+      let dripMul=1;
+      if(ch.drips) for(const dr of ch.drips){
+        const da=Math.abs(((a-dr[0]+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI);
+        if(da<dr[2] && yn<.9 && yn>.9-dr[1]) dripMul=Math.min(dripMul, .78+.22*(da/dr[2]));
+      }
       // outer surface — bare clay foot, pooling, reactive rim break
       const glzO = has && yn >= .05;
-      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav*st:1);
+      let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav*st*dripMul:1);
       if(glzO && yn>rbStart){ const b=clamp((yn-rbStart)/(1-rbStart),0,1)*rbAmt; tmp.copy(paint).lerp(breakC,b); cO=tmp; sO*=1+b*(iron?-.12:.1); }
       let o=(i*radial+j)*3, u=(i*radial+j)*2;
-      pos[o]=ca*rOut; pos[o+1]=yv; pos[o+2]=sa*rOut;
+      pos[o]=ca*rOut+leanX; pos[o+1]=yv; pos[o+2]=sa*rOut+leanZ;
       col[o]=cO.r*sO; col[o+1]=cO.g*sO; col[o+2]=cO.b*sO;
       uv[u]=j/radial; uv[u+1]=i/n;
       // inner surface
       const cI = has? paint : bisqueC, sI = base*(has?pool*mott*spk*innerPool*st:1);
       o=((rows-1-i)*radial+j)*3; u=((rows-1-i)*radial+j)*2;
-      pos[o]=ca*rin; pos[o+1]=Math.max(yv,yIn); pos[o+2]=sa*rin;
+      pos[o]=ca*rin+leanX; pos[o+1]=Math.max(yv,yIn); pos[o+2]=sa*rin+leanZ;
       col[o]=cI.r*sI; col[o+1]=cI.g*sI; col[o+2]=cI.b*sI;
       uv[u]=j/radial; uv[u+1]=(rows-1-i)/n;
     }
@@ -1052,6 +1069,39 @@ function loadShelf(){
   });
   layoutShelf();
 }
+/* every firing bakes a unique "fired character" so no two pieces are alike */
+function makeFiredChar(){
+  const warp = 1 + (pot.clay.key==='porcelain'?.5:0) + clamp(thinFrac()*2,0,.7);
+  const drips=[]; const nd = Math.random()<.5? 1+Math.floor(rnd(3)) : 0;
+  for(let i=0;i<nd;i++) drips.push([+rnd(0,6.283).toFixed(2), +rnd(.12,.34).toFixed(2), +rnd(.05,.13).toFixed(2)]);
+  return {
+    ov:+(rnd(.015,.05)*warp).toFixed(3), ovp:+rnd(0,6.283).toFixed(2),
+    lean:+(rnd(0,.03)*warp).toFixed(3), leanA:+rnd(0,6.283).toFixed(2),
+    rim:+(rnd(.05,.24)*warp).toFixed(3),
+    by:+rnd(.28,.7).toFixed(2), ba:+(rnd(-.16,.3)*(pot.collapsed?0:1)).toFixed(2),
+    hs:+rnd(-.045,.045).toFixed(3), ls:+rnd(-.05,.05).toFixed(3),
+    drips,
+  };
+}
+/* star rating: reward good craft across the whole pipeline */
+function computeStars(){
+  if(pot.collapsed) return G._fireFlawless? 3 : 1.5;   // "avant-garde" blobs get a wildcard
+  let s = 2.0;
+  if(G.form && G.form.key!=='free') s += (matchPct()/100)*1.7; else s += 1.0;
+  const vr = wallVariance(); s += vr<.3? 1.0 : vr<.55? .5 : 0;
+  const cov = pot.glazedFrac; s += cov>.85? .6 : cov>.6? .3 : 0;
+  if(pot.glazeThk>1.5 && pot.glazeThk<5.5) s += .4;
+  if(pot.layers.length>=2) s += .3;                    // multi-glaze artistry
+  if(pot.carve && pot.carve!=='none') s += .2;
+  if(G._fireCracked) s -= .8;
+  if(pot.bisqueCracked) s -= .5;
+  if(G._fireFlawless) s += .6;
+  return clamp(Math.round(s*2)/2, .5, 5);
+}
+function starStr(n){
+  n=Math.round(n*2)/2; const full=Math.floor(n), half=(n-full)>=.5?1:0;
+  return '★'.repeat(full)+(half?'½':'')+'☆'.repeat(Math.max(0,5-full-half));
+}
 function pieceData(){
   let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
   return {
@@ -1066,6 +1116,8 @@ function pieceData(){
     glazeName:glazeNames(),
     clayName:pot.clay.n,
     seed:+(rnd(6.283)).toFixed(3),
+    char:makeFiredChar(),
+    stars:computeStars(),
   };
 }
 function addToShelf(){
@@ -1378,11 +1430,19 @@ const CARVES = [
   {key:'rings',   n:'Rings',   sym:'☰'},
   {key:'wave',    n:'Wave',    sym:'〰'},
   {key:'chatter', n:'Chatter', sym:'᎒᎒'},
+  {key:'flute',   n:'Fluted',  sym:'⁝⁝'},
+  {key:'facet',   n:'Faceted', sym:'⬡'},
+  {key:'dimple',  n:'Dimpled', sym:'⋰'},
+  {key:'spiral',  n:'Spiral',  sym:'𖠿'},
 ];
 function carveOffset(carve, yn, jn){
   if(carve==='rings')   return -.11*Math.pow(Math.max(0,Math.sin(yn*34)),8);
   if(carve==='wave')    return  .09*Math.sin(yn*18 + jn*Math.PI*6);
   if(carve==='chatter') return -.07*Math.abs(Math.sin(jn*Math.PI*14))*Math.max(0,Math.sin(yn*26));
+  if(carve==='flute')   return -.13*Math.pow(Math.abs(Math.sin(jn*Math.PI*9)),1.6);        // vertical flutes
+  if(carve==='facet')   return -.16*(1-Math.abs(((jn*8)%1)-.5)*2)*(1-yn*.15);              // flat-cut facets
+  if(carve==='dimple')  return -.08*Math.pow(Math.max(0,Math.sin(yn*13)*Math.sin(jn*Math.PI*12)),2); // pressed dimples
+  if(carve==='spiral')  return -.06*Math.sin(yn*22 + jn*Math.PI*8);                        // spiralling groove
   return 0;
 }
 
@@ -1928,6 +1988,7 @@ function applyGlazeFire(){
   repaintColors();
   if(cracked){ AudioEng.crack(); crackSprite.visible=true; crackSprite.scale.set(1, pot.h/9, 1); }
   const flawless = !cracked && !pot.collapsed && !pot.bisqueCracked && risks.total<.12 && cov>70 && coat==='good';
+  G._fireCracked = cracked; G._fireFlawless = flawless;   // feed the star rating
   let title, flavor;
   if(pot.collapsed){
     title = Math.random()<.25 ? '🎭 “…Avant-garde!”' : '🫤 Well. It\'s… fired.';
@@ -1978,7 +2039,11 @@ function applyGlazeFire(){
   G.fired++; localStorage.setItem('mudember_fired', G.fired);
   addToShelf();
   G.lastPieceData = shelfPieces[0].data;          // reuse the exact same piece on the hero display
+  G.lastStars = G.lastPieceData.stars;
+  rows.push(['Rating', `<span style="color:#ffcf4a;letter-spacing:2px">${starStr(G.lastStars)}</span> ${G.lastStars.toFixed(1)}`]);
   rows.push(['Shelf', shelfPieces.length+' piece'+(shelfPieces.length>1?'s':'')]);
+  // best-piece record
+  if(G.lastStars > (+(localStorage.getItem('mudember_beststars')||0))) localStorage.setItem('mudember_beststars', G.lastStars);
   AudioEng.chime(flawless?1.2:1);
   showResult(title, flavor, rows, true);
 }
@@ -2026,7 +2091,8 @@ function enterDisplay(){
   }
   const d=G.lastPieceData||{};
   const sub = `${d.kind||classifyPiece()} · ${d.glazeName||glazeNames()} · ${d.clayName||pot.clay.n}`;
-  $('displayCard').innerHTML = `<div class="dTitle">${G.lastTitle||'Your piece'}</div><div class="dSub">${sub}</div>`;
+  const st = d.stars!=null? `<div style="color:#ffcf4a;letter-spacing:3px;font-size:18px;margin-top:4px">${starStr(d.stars)}</div>` : '';
+  $('displayCard').innerHTML = `<div class="dTitle">${G.lastTitle||'Your piece'}</div><div class="dSub">${sub}</div>${st}`;
   framePiece();
   banner('here it is ✨', 1.4);
 }
@@ -2102,7 +2168,8 @@ function openGallery(from){
     shelfPieces.forEach(p=>{
       if(!p.thumb){ try{ p.thumb=renderThumb(p.data); }catch(e){ p.thumb=''; } }
       const card=document.createElement('div'); card.className='galCard';
-      card.innerHTML=`<img src="${p.thumb}" alt=""><div class="gName">a ${p.data.kind||classifyName(p.data)}</div><div class="gMeta">${pieceMeta(p.data)}</div>`;
+      const st = p.data.stars!=null? `<div class="gStars">${starStr(p.data.stars)}</div>` : '';
+      card.innerHTML=`<img src="${p.thumb}" alt="">${st}<div class="gName">a ${p.data.kind||classifyName(p.data)}</div><div class="gMeta">${pieceMeta(p.data)}</div>`;
       grid.appendChild(card);
     });
   }
