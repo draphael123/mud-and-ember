@@ -29,11 +29,33 @@ CDN). No build step — open `index.html`.
   firing cinematic, and a living studio (hanging lamp, potted plant, a napping cat).
 - Every finished piece is shown off on a rotating display, saved to your persistent
   **My Gallery**, and lined up on the studio shelf. Photo mode exports a PNG.
+- **Music player** with four tracks (one pre-rendered, three generative) — skip,
+  pause, and pick from the 🎵 menu.
+- Optional **cloud save** — sync your gallery across devices with a studio code
+  (see setup below).
 
 ## Deploy
 
 Static site — Vercel serves `index.html` at the domain root (`outputDirectory: "."`).
 Pushes to `main` auto-deploy. No configuration needed beyond importing the repo.
+
+## Cloud save (optional)
+
+The gallery is saved in the browser's `localStorage` by default (per-device). To
+sync it across devices, the game calls a tiny serverless function at
+`api/studio.js` backed by a Redis/KV store. One-time owner setup in Vercel:
+
+1. Vercel dashboard → this project → **Storage**
+2. Create a **Redis / KV** database (Upstash's free tier works) and **Connect** it
+   to the project — this injects `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or the
+   `UPSTASH_REDIS_REST_*` equivalents; the function accepts either)
+3. **Redeploy**
+
+Until a store is connected, `☁️ Cloud Save` shows setup instructions and the game
+stays local-only — nothing breaks. Once connected, players hit **Enable cloud save**
+to get a studio code and enter that same code on another device to sync. Identity is
+the code itself (a capability token), so there's no login; anyone with a code can
+read/write that studio, which is the right trade-off for a low-stakes gallery.
 
 ## Audio
 

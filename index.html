@@ -82,6 +82,15 @@
   .galCard .gMeta { font-size:10px; opacity:.75; margin-top:2px; letter-spacing:.3px; }
   #galleryEmpty { margin-top:28px; font-size:14px; opacity:.8; line-height:1.6; }
 
+  /* cloud save */
+  #cloudCard .cloudInput { width:100%; padding:11px 12px; border-radius:9px; border:2px solid #6d4530;
+    background:rgba(0,0,0,.35); color:#ffe9c8; font-family:inherit; font-size:15px; letter-spacing:1px;
+    text-transform:uppercase; pointer-events:auto; }
+  #cloudCard .btn { width:100%; }
+  #cloudCode { font-size:22px; font-weight:bold; letter-spacing:2px; color:#ffd9a0; margin:6px 0 12px;
+    word-break:break-all; }
+  #cloudMsg { margin-top:12px; font-size:13px; min-height:18px; color:#ffd27a; }
+
   /* persistent "what to do" guide */
   #guideBar { position:absolute; top:calc(72px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
     display:none; font-size:12.5px; background:rgba(20,12,10,.72); border:1.5px solid rgba(190,120,80,.5);
@@ -144,6 +153,19 @@
     display:none; align-items:center; justify-content:center; }
   #muteBtn { top:calc(10px + env(safe-area-inset-top)); right:10px; }
   #gearBtn { top:calc(58px + env(safe-area-inset-top)); right:10px; }
+  #musicBtn { top:calc(106px + env(safe-area-inset-top)); right:10px; }
+
+  /* music player */
+  #npTitle { font-size:19px; font-weight:bold; color:#ffd9a0; margin-top:3px; }
+  #musicControls { display:flex; gap:10px; margin-top:14px; }
+  #musicControls .btn { flex:1; font-size:20px; padding:12px 0; }
+  #trackList { margin-top:14px; text-align:left; }
+  .trackRow { display:flex; align-items:center; gap:10px; padding:10px 8px; border-radius:9px;
+    border:1.5px solid transparent; pointer-events:auto; cursor:pointer; }
+  .trackRow.on { border-color:#d09050; background:rgba(122,74,42,.35); }
+  .trackRow .tName { font-size:14px; font-weight:bold; color:#ffe9c8; }
+  .trackRow .tBy { font-size:11px; opacity:.7; }
+  .trackRow .tIcon { font-size:16px; width:20px; text-align:center; }
 
   #vignette { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .8s;
     background:radial-gradient(ellipse at center, transparent 42%, rgba(120,20,0,.55) 100%); }
@@ -201,6 +223,7 @@
 
   <button class="iconBtn" id="muteBtn">♪</button>
   <button class="iconBtn" id="gearBtn">⚙</button>
+  <button class="iconBtn" id="musicBtn">🎵</button>
 
   <!-- screens -->
   <div class="screen" id="titleScreen">
@@ -208,6 +231,8 @@
     <div class="tag">a small pottery studio · wedge · throw · <i>gamble it in the kiln, twice</i></div>
     <button class="btn bigBtn" id="startBtn">OPEN THE STUDIO</button>
     <button class="btn bigBtn" id="galleryBtn" style="font-size:14px;padding:11px 30px;">🖼️ MY GALLERY</button>
+    <button class="btn bigBtn" id="cloudBtn" style="font-size:14px;padding:11px 30px;">☁️ CLOUD SAVE</button>
+    <button class="btn bigBtn" id="musicTitleBtn" style="font-size:14px;padding:11px 30px;">🎵 MUSIC</button>
     <button class="btn bigBtn" id="introBtn" style="font-size:14px;padding:11px 30px;">↻ REPLAY INTRO</button>
     <button class="btn bigBtn" id="setBtn" style="font-size:14px;padding:11px 30px;">⚙ SETTINGS</button>
     <div class="tag" id="firedTag" style="margin-top:14px;"></div>
@@ -280,6 +305,35 @@
     <div class="tag" id="galleryTag">every piece that survived the kiln</div>
     <div id="galleryGrid"></div>
     <button class="btn bigBtn" id="galleryClose">← BACK</button>
+  </div>
+
+  <div class="screen" id="cloudScreen">
+    <h2>☁️ Cloud Save</h2>
+    <div class="tag" id="cloudStatus">checking…</div>
+    <div class="cardInner" id="cloudCard"></div>
+    <button class="btn bigBtn" id="cloudClose">← BACK</button>
+  </div>
+
+  <div class="screen" id="musicScreen">
+    <h2>🎵 Music</h2>
+    <div class="cardInner" id="musicCard">
+      <div id="nowPlaying">
+        <div style="font-size:11px;letter-spacing:2px;opacity:.75">NOW PLAYING</div>
+        <div id="npTitle">—</div>
+        <div id="npBy" style="font-size:12px;opacity:.8"></div>
+      </div>
+      <div id="musicControls">
+        <button class="btn" id="mPrev">⏮</button>
+        <button class="btn" id="mPlay">⏯</button>
+        <button class="btn" id="mNext">⏭</button>
+      </div>
+      <div class="setRow" style="margin-top:14px">
+        <div class="setLbl">VOLUME</div>
+        <input type="range" id="volRange2" min="0" max="100" value="80" />
+      </div>
+      <div id="trackList"></div>
+    </div>
+    <button class="btn bigBtn" id="musicClose">← BACK</button>
   </div>
 </div>
 
@@ -371,7 +425,7 @@ const AudioEng = {
     this.echo.connect(fb); fb.connect(this.echo);
     this.echo.connect(wet); wet.connect(this.musicGain);
     // downloaded audio (audio/manifest.json) replaces the generative score & synth SFX
-    this.loadExternal().finally(()=>{ if(!this.buf.music) this.startMusic(); });
+    this.loadExternal().finally(()=>{ this.buildTracks(); this.playTrack(this.trackIdx); });
   },
   /* ---- optional real audio files, dropped in /audio by the studio owner ---- */
   buf:{},
@@ -384,11 +438,6 @@ const AudioEng = {
           this.buf[k] = await this.ctx.decodeAudioData(ab);
         }catch(e){ /* skip files that are missing or won't decode */ }
       }
-      if(this.buf.music){
-        const s=this.ctx.createBufferSource(); s.buffer=this.buf.music; s.loop=true;
-        const g=this.ctx.createGain(); g.gain.value=.35;
-        s.connect(g); g.connect(this.master); s.start();
-      }
     }catch(e){ /* no manifest — fully generative audio */ }
   },
   playBuf(k, vol=1, rate=1){
@@ -399,7 +448,7 @@ const AudioEng = {
     s.connect(g); g.connect(this.master); s.start();
     return true;
   },
-  /* ---- generative studio score: slow chords, plucked pentatonic melody ---- */
+  /* ---- generative music: plucked pentatonic melodies over changing chords ---- */
   pluck(freq, t, vol=.05, decay=1.2){
     const o=this.ctx.createOscillator(); o.type='triangle'; o.frequency.value=freq; o.detune.value=rnd(-4,4);
     const f=this.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=2400;
@@ -409,33 +458,64 @@ const AudioEng = {
     o.connect(f); f.connect(g); g.connect(this.musicGain); g.connect(this.echo);
     o.start(t); o.stop(t+decay+.05);
   },
-  startMusic(){
-    // Am — F — C — G, with A-minor pentatonic on top
-    const CHORDS = [
-      { bass:110.0,  tones:[220.0,261.6,329.6] },   // A
-      { bass:87.31,  tones:[174.6,220.0,261.6] },   // F
-      { bass:130.8,  tones:[261.6,329.6,392.0] },   // C
-      { bass:98.0,   tones:[196.0,246.9,293.7] },   // G
+  trackIdx:0, playing:true, _musicSrc:null, _genOn:false, _genBar:0, onTrackChange:null,
+  buildTracks(){
+    this.TRACKS = [
+      { name:'The River Studio', by:'plucked strings · A minor', kind:'buffer',
+        cfg:{ chords:[{bass:110,tones:[220,261.6,329.6]},{bass:87.31,tones:[174.6,220,261.6]},{bass:130.8,tones:[261.6,329.6,392]},{bass:98,tones:[196,246.9,293.7]}],
+              scale:[220,261.6,293.7,329.6,392,440], bar:3.4, decay:2.2, dens:.5, oct:1 } },
+      { name:'Kiln Glow', by:'warm & slow · D minor', kind:'gen',
+        cfg:{ chords:[{bass:73.42,tones:[146.83,174.61,220]},{bass:116.54,tones:[174.61,233.08,293.66]},{bass:87.31,tones:[174.61,220,261.63]},{bass:130.81,tones:[130.81,164.81,196]}],
+              scale:[146.83,174.61,196,220,261.63,293.66], bar:4.2, decay:3, dens:.32, oct:1 } },
+      { name:'Morning Slip', by:'bright & lilting · C major', kind:'gen',
+        cfg:{ chords:[{bass:130.81,tones:[261.63,329.63,392]},{bass:98,tones:[196,246.94,293.66]},{bass:110,tones:[220,261.63,329.63]},{bass:87.31,tones:[174.61,220,261.63]}],
+              scale:[261.63,293.66,329.63,392,440,523.25], bar:3, decay:1.8, dens:.62, oct:1 } },
+      { name:'Night Wheel', by:'sparse & still · A dorian', kind:'gen',
+        cfg:{ chords:[{bass:110,tones:[220,261.63,329.63]},{bass:82.41,tones:[164.81,196,246.94]},{bass:73.42,tones:[146.83,185,220]},{bass:98,tones:[196,246.94,293.66]}],
+              scale:[220,246.94,261.63,293.66,329.63,369.99,392], bar:4.6, decay:3.2, dens:.28, oct:1 } },
     ];
-    const PENTA = [220.0,261.6,293.7,329.6,392.0,440.0,523.3,587.3];
-    const BAR = 3.4;
-    let bar=0;
-    const playBar = ()=>{
-      if(!this.ctx) return;
-      const t = this.ctx.currentTime + .08;
-      const ch = CHORDS[bar%CHORDS.length];
-      this.pluck(ch.bass, t, .075, 2.6);                       // soft bass root
-      if(bar%2===0) this.pluck(ch.tones[0]/2, t+BAR*.5, .04, 2);
-      const n = 2+Math.floor(rnd(3));                          // sparse melody
-      for(let i=0;i<n;i++){
-        const when = t + (Math.floor(rnd(8))/8)*BAR*.9 + .06;
-        const pool = Math.random()<.6 ? ch.tones : PENTA;
-        this.pluck(pick(pool)*(Math.random()<.25?2:1), when, .038+rnd(.02), rnd(.9,1.6));
-      }
-      bar++; this._musicT=setTimeout(playBar, BAR*1000);
-    };
-    playBar();
+    if(this.trackIdx>=this.TRACKS.length) this.trackIdx=0;
   },
+  playTrack(i){
+    if(!this.ctx) return;
+    this.stopMusic();
+    this.trackIdx = (i+this.TRACKS.length)%this.TRACKS.length;
+    this.playing = true; this._genBar=0;
+    const tr = this.TRACKS[this.trackIdx];
+    if(tr.kind==='buffer' && this.buf.music){
+      const s=this.ctx.createBufferSource(); s.buffer=this.buf.music; s.loop=true;
+      s.connect(this.musicGain); s.start(); this._musicSrc=s;
+    } else {
+      this.genCfg = tr.cfg; this._genOn=true; this.runGen();
+    }
+    if(this.onTrackChange) this.onTrackChange();
+  },
+  runGen(){
+    const cfg=this.genCfg;
+    if(!this._genOn || !this.ctx || !cfg) return;
+    const t=this.ctx.currentTime+.08;
+    const ch=cfg.chords[this._genBar%cfg.chords.length];
+    this.pluck(ch.bass, t, .072, cfg.decay+.4);
+    if(this._genBar%2===0) this.pluck(ch.tones[0]/2, t+cfg.bar*.5, .038, cfg.decay);
+    const n = cfg.dens<.4? 1+Math.floor(rnd(2)) : 2+Math.floor(rnd(3));
+    for(let i=0;i<n;i++){
+      const when = t + (Math.floor(rnd(8))/8)*cfg.bar*.9 + .06;
+      const pool = Math.random()<.6 ? ch.tones : cfg.scale;
+      this.pluck(pick(pool)*(Math.random()<.25?2:1)*cfg.oct, when, .036+rnd(.02), rnd(.9,1.6));
+    }
+    this._genBar++; this._musicT=setTimeout(()=>this.runGen(), cfg.bar*1000);
+  },
+  stopMusic(){
+    this._genOn=false; clearTimeout(this._musicT);
+    if(this._musicSrc){ try{this._musicSrc.stop();}catch(e){} this._musicSrc=null; }
+  },
+  toggleMusic(){
+    if(this.playing){ this.stopMusic(); this.playing=false; if(this.onTrackChange) this.onTrackChange(); }
+    else this.playTrack(this.trackIdx);
+  },
+  nextTrack(){ this.playTrack(this.trackIdx+1); },
+  prevTrack(){ this.playTrack(this.trackIdx-1); },
+  trackName(){ return (this.TRACKS && this.playing)? this.TRACKS[this.trackIdx].name : 'paused'; },
   duckMusic(d){ if(this.musicGain) this.musicGain.gain.setTargetAtTime(d? .16:.5, this.ctx.currentTime, .6); },
   resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
   setVol(){ if(this.master) this.master.gain.value = this.muted?0:SET.vol; },
@@ -903,6 +983,7 @@ function layoutShelf(){
 }
 function saveShelf(){
   localStorage.setItem('mudember_shelf', JSON.stringify(shelfPieces.map(p=>p.data)));
+  cloudSync();
 }
 function loadShelf(){
   let arr=[];
@@ -1349,7 +1430,7 @@ function loadOrders(){
   saveOrders();
 }
 function saveOrders(){ localStorage.setItem('mudember_orders', JSON.stringify(orders)); }
-function saveCoins(){ localStorage.setItem('mudember_coins', G.coins); }
+function saveCoins(){ localStorage.setItem('mudember_coins', G.coins); cloudSync(); }
 function coinHUD(){ $('shelfCount').textContent = `${shelfPieces.length} · ${G.coins}c`; }
 
 /* kiln cinematic timeline (seconds) */
@@ -1400,7 +1481,7 @@ function guide(html){
   g.style.display='block'; g.innerHTML=html;
 }
 
-const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen'];
+const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','cloudScreen','musicScreen'];
 function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
 
 const STAGE_INFO = {
@@ -1423,6 +1504,7 @@ function setPlayHUD(on){
   $('shelfBox').style.display = on?'block':'none';
   $('gearBtn').style.display = on?'flex':'none';
   $('muteBtn').style.display = 'flex';
+  $('musicBtn').style.display = 'flex';
   $('photoBar').style.display='none';
   $('displayBar').style.display='none'; $('displayCard').style.display='none';
   if(!on){ $('stageBox').style.display='none'; $('meters').style.display='none';
@@ -1949,6 +2031,156 @@ $('galleryClose').onclick = ()=>{
 };
 $('galleryBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openGallery('title'); };
 
+/* ---------------- cloud save ---------------- */
+const SYNC_KEYS = ['mudember_shelf','mudember_fired','mudember_coins','mudember_orders','mudember_clay'];
+function genCode(){
+  const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', buf=new Uint8Array(12);
+  (crypto.getRandomValues?crypto.getRandomValues(buf):buf.forEach((_,i)=>buf[i]=Math.floor(Math.random()*256)));
+  let s='';
+  for(let i=0;i<12;i++){ s+=a[buf[i]%a.length]; if(i%4===3&&i<11) s+='-'; }
+  return s;
+}
+function gatherSave(){ const o={ver:1}; SYNC_KEYS.forEach(k=>o[k]=localStorage.getItem(k)); o.savedAt=Date.now(); return o; }
+function applySave(o){
+  SYNC_KEYS.forEach(k=>{ if(o[k]!=null) localStorage.setItem(k,o[k]); else localStorage.removeItem(k); });
+  // rebuild in-memory state from the freshly-written storage
+  G.fired = +(localStorage.getItem('mudember_fired')||0);
+  G.coins = +(localStorage.getItem('mudember_coins')||0);
+  orders=[]; loadOrders();
+  const sc = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay')); if(sc) pot.clay=sc;
+  shelfPieces.forEach(p=>{ scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); });
+  shelfPieces.length=0; loadShelf();
+  $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
+}
+async function cloudHealth(){ try{ const r=await fetch('/api/studio?health=1'); return await r.json(); }catch(e){ return {configured:false, unreachable:true}; } }
+async function cloudPull(id){ const r=await fetch('/api/studio?id='+encodeURIComponent(id)); if(!r.ok) throw new Error('pull '+r.status); return (await r.json()).data; }
+async function cloudPushNow(){
+  const id=localStorage.getItem('mudember_cloud'); if(!id) return null;
+  const r=await fetch('/api/studio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,data:gatherSave()})});
+  if(!r.ok) throw new Error('push '+r.status);
+  const j=await r.json(); if(j.savedAt) localStorage.setItem('mudember_savedAt', j.savedAt); return j;
+}
+let pushTimer=null;
+function cloudSync(){
+  if(!localStorage.getItem('mudember_cloud')) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>cloudPushNow().catch(()=>banner('cloud save failed — will retry',1.4,true)), 1400);
+}
+async function cloudBoot(){
+  const id=localStorage.getItem('mudember_cloud'); if(!id) return;
+  try{
+    const data=await cloudPull(id);
+    if(data && (data.savedAt||0) > (+localStorage.getItem('mudember_savedAt')||0)){
+      applySave(data); localStorage.setItem('mudember_savedAt', data.savedAt);
+    }
+  }catch(e){}
+}
+function cloudMsg(t){ const m=$('cloudMsg'); if(m) m.textContent=t||''; }
+async function renderCloud(){
+  const card=$('cloudCard');
+  card.innerHTML='<div style="opacity:.7">checking…</div>';
+  const h=await cloudHealth();
+  const enabled=!!localStorage.getItem('mudember_cloud');
+  if(!h.configured){
+    $('cloudStatus').textContent = h.unreachable? 'offline' : 'not set up yet';
+    card.innerHTML = `<div style="font-size:13px;line-height:1.65;text-align:left">
+      Cloud save needs a small storage database on the Vercel project — a one-time setup by the studio owner:<br><br>
+      1. Vercel dashboard → this project → <b>Storage</b><br>
+      2. Create a <b>Redis / KV</b> store (Upstash — free) and <b>Connect</b> it<br>
+      3. <b>Redeploy</b><br><br>
+      Then reopen this screen. Until then your gallery is saved on this device.</div>`;
+    return;
+  }
+  if(!enabled){
+    $('cloudStatus').textContent='off — this device only';
+    card.innerHTML = `<div style="font-size:14px;line-height:1.6">Back up your gallery and sync it across devices with a studio code.</div>
+      <button class="btn" id="cloudEnableBtn" style="margin-top:14px">☁️ ENABLE CLOUD SAVE</button>
+      <div style="margin-top:16px;font-size:12px;opacity:.8;text-align:left">Already have a code from another device?</div>
+      <input class="cloudInput" id="cloudCodeIn" placeholder="studio code" style="margin-top:6px" />
+      <button class="btn" id="cloudLoadBtn" style="margin-top:8px">⬇ LOAD MY STUDIO</button>
+      <div id="cloudMsg"></div>`;
+    $('cloudEnableBtn').onclick = async ()=>{
+      cloudMsg('enabling…');
+      if(!localStorage.getItem('mudember_cloud')) localStorage.setItem('mudember_cloud', genCode());
+      try{ await cloudPushNow(); renderCloud(); }catch(e){ cloudMsg('Couldn\'t reach the cloud — try again.'); }
+    };
+    $('cloudLoadBtn').onclick = ()=> cloudLoadCode($('cloudCodeIn').value);
+  } else {
+    const code=localStorage.getItem('mudember_cloud');
+    $('cloudStatus').textContent='on — synced ☁️';
+    card.innerHTML = `<div style="font-size:11px;letter-spacing:2px;opacity:.8">YOUR STUDIO CODE</div>
+      <div id="cloudCode">${code}</div>
+      <button class="btn" id="cloudCopyBtn">📋 COPY CODE</button>
+      <div style="margin-top:12px;font-size:12px;opacity:.82;line-height:1.5">Enter this code in Cloud Save on another device to sync your gallery there.</div>
+      <button class="btn" id="cloudSyncBtn" style="margin-top:14px">⟳ SYNC NOW</button>
+      <button class="btn" id="cloudOffBtn" style="margin-top:8px;opacity:.85;font-size:12px">turn off on this device</button>
+      <div id="cloudMsg"></div>`;
+    $('cloudCopyBtn').onclick = ()=>{
+      (navigator.clipboard?.writeText(code) || Promise.reject()).then(()=>cloudMsg('copied!')).catch(()=>cloudMsg('code: '+code));
+    };
+    $('cloudSyncBtn').onclick = async ()=>{ cloudMsg('syncing…'); try{ await cloudPushNow(); cloudMsg('synced ☁️'); }catch(e){ cloudMsg('sync failed — try again.'); } };
+    $('cloudOffBtn').onclick = ()=>{ localStorage.removeItem('mudember_cloud'); renderCloud(); };
+  }
+}
+async function cloudLoadCode(code){
+  code=(code||'').trim().toUpperCase();
+  if(!/^[A-Z0-9-]{6,64}$/.test(code)){ cloudMsg('That code doesn\'t look right.'); return; }
+  cloudMsg('loading…');
+  let data; try{ data=await cloudPull(code); }catch(e){ cloudMsg('Couldn\'t reach the cloud.'); return; }
+  if(!data){ cloudMsg('No studio found for that code.'); return; }
+  applySave(data);
+  localStorage.setItem('mudember_cloud', code);
+  localStorage.setItem('mudember_savedAt', data.savedAt||Date.now());
+  cloudMsg('Loaded — your gallery is synced ☁️');
+  setTimeout(renderCloud, 900);
+}
+function openCloud(from){
+  G.cloudFrom=from||'title'; G.state='cloud';
+  setPlayHUD(false); $('muteBtn').style.display='flex';
+  showScreen('cloudScreen'); renderCloud();
+}
+$('cloudBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openCloud('title'); };
+$('cloudClose').onclick = ()=>{ G.state='title'; showScreen('titleScreen'); };
+window.Cloud = { gatherSave, applySave, cloudPushNow, cloudPull, cloudLoadCode, genCode, renderCloud };
+
+/* ---------------- music player ---------------- */
+function renderMusic(){
+  const A=AudioEng;
+  $('npTitle').textContent = A.playing? A.trackName() : 'paused';
+  $('npBy').textContent = (A.TRACKS && A.playing)? A.TRACKS[A.trackIdx].by : '';
+  $('mPlay').textContent = A.playing? '⏸' : '▶';
+  const list=$('trackList'); list.innerHTML='';
+  (A.TRACKS||[]).forEach((t,i)=>{
+    const on = A.playing && i===A.trackIdx;
+    const row=document.createElement('div'); row.className='trackRow'+(on?' on':'');
+    row.innerHTML=`<div class="tIcon">${on?'▶':'♪'}</div><div><div class="tName">${t.name}</div><div class="tBy">${t.by}</div></div>`;
+    row.onclick=()=>{ A.playTrack(i); renderMusic(); };
+    list.appendChild(row);
+  });
+}
+function openMusic(){
+  AudioEng.init(); AudioEng.resume();
+  if(!AudioEng.TRACKS) AudioEng.buildTracks();
+  G.musicFrom=G.state; G.state='music';
+  setPlayHUD(false); $('muteBtn').style.display='flex'; $('musicBtn').style.display='flex';
+  showScreen('musicScreen');
+  $('volRange2').value = SET.vol*100;
+  AudioEng.onTrackChange=renderMusic; renderMusic();
+}
+$('musicTitleBtn').onclick = ()=> openMusic();
+$('musicBtn').addEventListener('pointerdown', e=>{ e.stopPropagation(); openMusic(); });
+$('musicClose').onclick = ()=>{
+  AudioEng.onTrackChange=null;
+  const back=G.musicFrom||'title';
+  if(['wedge','center','throwing','glazeDip'].includes(back)){ G.state=back; SCREENS.forEach(s=>$(s).style.display='none'); refreshStageHUD(); }
+  else if(back==='display'){ enterDisplay(); }
+  else { G.state='title'; showScreen('titleScreen'); }
+};
+$('mPlay').onclick = ()=>{ AudioEng.toggleMusic(); renderMusic(); };
+$('mPrev').onclick = ()=>{ AudioEng.prevTrack(); renderMusic(); };
+$('mNext').onclick = ()=>{ AudioEng.nextTrack(); renderMusic(); };
+$('volRange2').addEventListener('input', ()=>{ SET.vol=$('volRange2').value/100; saveSet(); AudioEng.setVol(); $('volRange').value=SET.vol*100; });
+
 $('startBtn').onclick = ()=>{
   AudioEng.init(); AudioEng.resume();
   if(!localStorage.getItem('mudember_intro')){ localStorage.setItem('mudember_intro','1'); showIntro(); }
@@ -2337,7 +2569,10 @@ loadShelf();
 $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
 showScreen('titleScreen');
 $('muteBtn').style.display='flex';
+$('musicBtn').style.display='flex';
 requestAnimationFrame(tick);
+// if this device is linked to a cloud studio, pull the latest on load
+cloudBoot().then(()=>{ $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : ''; });
 </script>
 </body>
 </html>
