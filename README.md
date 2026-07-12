@@ -16,13 +16,19 @@ CDN). No build step — open `index.html`.
   the noticeboard pay coins for delivering the right piece.
 - **Tap** to wedge · **press & hold** to centre · **drag ↔** to shape the wall ·
   **drag ↑** near the rim to pull taller
+- **Rib** the wet wall anytime to smooth it into a clean, true curve — your first
+  pot can't break, so learn freely
 - At leather-hard: **trim** to even the walls, **carve** decoration (rings / wave /
   chatter)
 - **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
   **glaze fire**. Both firings roll real risk from your shortcuts: wet clay and air
   bubbles burst, thin walls split, heavy glaze runs.
+- Ten forms and eighteen glazes with real-ceramic finishing — bare-clay foot rings,
+  glaze breaking rusty on the rims, gentle mottling, gloss / satin / speckle sheens.
 - Three clay bodies (stoneware unlocks at 3 fired, porcelain at 8), a full brick-kiln
-  firing cinematic, photo mode with PNG export, and a persistent shelf.
+  firing cinematic, and a living studio (hanging lamp, potted plant, a napping cat).
+- Every finished piece is shown off on a rotating display, saved to your persistent
+  **My Gallery**, and lined up on the studio shelf. Photo mode exports a PNG.
 
 ## Deploy
 
