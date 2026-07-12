@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Mud &amp; Ember — a pottery studio</title>
+<link rel="icon" href="data:," />
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#171019; color:#f6ecdd;
+    font-family:'Trebuchet MS','Segoe UI',sans-serif; user-select:none; -webkit-user-select:none; touch-action:none; }
+  #game { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  .panel { position:absolute; background:linear-gradient(180deg,rgba(38,24,20,.82),rgba(22,13,11,.9));
+           border:2px solid #7a4a33; border-radius:12px; padding:10px 14px;
+           box-shadow:0 6px 22px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,200,150,.16); }
+
+  #shelfBox { top:calc(10px + env(safe-area-inset-top)); left:10px; display:none; font-size:13px; padding:7px 12px; color:#ffd9a0; }
+
+  /* production stage indicator */
+  #stageBox { top:calc(10px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); display:none;
+    text-align:center; padding:7px 16px; min-width:150px; }
+  #stageBox .step { font-size:10px; letter-spacing:2.5px; opacity:.8; }
+  #stageBox .name { font-size:15px; font-weight:bold; color:#ffd9a0; letter-spacing:1px; }
+  #stageBox .sub { font-size:11px; opacity:.85; margin-top:2px; }
+
+  /* meters */
+  #meters { position:absolute; bottom:calc(104px + env(safe-area-inset-bottom)); left:10px; width:170px; display:none; }
+  .meter { background:linear-gradient(180deg,rgba(30,19,16,.8),rgba(18,11,9,.86)); border:1.5px solid #6d4530; border-radius:9px; padding:6px 9px; margin-top:7px; }
+  .meter .lbl { font-size:10px; letter-spacing:1.5px; display:flex; justify-content:space-between; opacity:.92; }
+  .meter .bar { height:11px; border-radius:6px; background:rgba(0,0,0,.5); overflow:hidden; border:1px solid rgba(255,255,255,.13); margin-top:4px; }
+  .meter .bar > i { display:block; height:100%; transition:width .1s linear; }
+  #moistFill { background:linear-gradient(90deg,#7a4a2c,#3f8fd0,#7ec8ff); width:100%; }
+  #stabFill  { background:linear-gradient(90deg,#3ad07a,#ffd24a,#ff5a3a); width:5%; }
+
+  /* selection chips (clay bodies at wedge, glazes at dip) */
+  #chipRow { position:absolute; bottom:calc(104px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    display:none; gap:12px; }
+  .chipWrap { display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:auto; }
+  .chip { pointer-events:auto; width:52px; height:52px; border-radius:50%; border:3px solid rgba(255,255,255,.3);
+    box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 -8px 12px rgba(0,0,0,.35), inset 0 5px 9px rgba(255,255,255,.35);
+    font-size:20px; color:#fff; text-shadow:0 1px 3px #000; }
+  .chip.on { border-color:#ffd9a0; transform:scale(1.12); }
+  .chipLbl { font-size:10px; letter-spacing:.5px; text-shadow:0 1px 3px #000; opacity:.9; }
+
+  /* action buttons */
+  #actions { position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:10px; right:10px; display:none; gap:9px; pointer-events:none; }
+  .btn { pointer-events:auto; border:2px solid #8a5a3a; border-radius:13px; color:#ffe9c8; font-weight:bold;
+    background:linear-gradient(180deg,#5a3323,#3a1f15); padding:13px 8px; font-size:14px; text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,210,160,.22); letter-spacing:1px; font-family:inherit; }
+  .btn:active { transform:translateY(2px); filter:brightness(1.2); }
+  #scrapBtn { flex:1; opacity:.92; }
+  #toolBtn { flex:1; }
+  #fireBtn { flex:1.9; background:linear-gradient(180deg,#8a3a1a,#5a1f0c); border-color:#d07040; }
+  #fireBtn .risk { display:block; font-size:10.5px; font-weight:normal; opacity:.92; margin-top:2px; letter-spacing:.4px; }
+  #fireBtn.hot { border-color:#ff6a4a; color:#ffb09a; }
+  .btn .sub { display:block; font-size:10px; font-weight:normal; opacity:.85; margin-top:2px; }
+  .btn[disabled] { opacity:.45; }
+
+  /* photo mode bar */
+  #photoBar { position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:10px; right:10px; display:none; gap:9px; pointer-events:none; }
+
+  /* persistent "what to do" guide */
+  #guideBar { position:absolute; top:calc(72px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    display:none; font-size:12.5px; background:rgba(20,12,10,.72); border:1.5px solid rgba(190,120,80,.5);
+    border-radius:20px; padding:7px 16px; color:#ffe9c8; text-align:center; letter-spacing:.3px;
+    max-width:min(78%, 340px); line-height:1.45; pointer-events:none; }
+  #guideBar b { color:#ffd27a; }
+
+  /* form picker */
+  .formGrid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:16px; width:100%; max-width:340px; }
+  .formBtn .fEmoji { font-size:26px; }
+  .formBtn .fDesc { font-size:10.5px; opacity:.8; font-weight:normal; margin-top:3px; letter-spacing:.2px; }
+  #orderList { width:100%; max-width:340px; }
+  .orderBtn { width:100%; margin-top:8px; font-size:12.5px; padding:11px 10px; font-weight:normal;
+    letter-spacing:.2px; line-height:1.45; background:linear-gradient(180deg,#4a3a28,#32251a); }
+  .orderBtn b { color:#ffd9a0; }
+
+  /* center banner */
+  #banner { position:absolute; top:24%; left:50%; transform:translate(-50%,-50%); text-align:center;
+    font-size:21px; font-weight:bold; color:#ffcf4a; letter-spacing:2px; text-shadow:0 2px 8px #000;
+    opacity:0; transition:opacity .18s; pointer-events:none; padding:0 20px; }
+  #banner.warn { color:#ff6a4a; }
+
+  #hint { position:absolute; bottom:calc(190px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    font-size:13px; opacity:0; transition:opacity .4s; text-align:center; line-height:1.5; text-shadow:0 1px 4px #000;
+    color:#ffe9c8; pointer-events:none; width:88%; }
+
+  /* full-screen cards */
+  .screen { position:absolute; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column;
+    background:rgba(12,7,10,.6); pointer-events:auto; text-align:center; padding:24px; backdrop-filter:blur(3px); }
+  .screen h1 { font-size:42px; color:#ffd9a0; text-shadow:0 3px 0 #4a2410, 0 8px 26px rgba(0,0,0,.7); letter-spacing:2px; }
+  .screen h2 { font-size:25px; color:#ffd9a0; text-shadow:0 2px 0 #4a2410; letter-spacing:1px; }
+  .screen .tag { margin-top:8px; font-size:14px; opacity:.9; letter-spacing:1px; }
+  .screen .cardInner { margin-top:18px; max-width:340px; width:100%; background:linear-gradient(180deg,rgba(44,27,22,.94),rgba(26,15,12,.96));
+    border:2px solid #7a4a33; border-radius:16px; padding:18px; box-shadow:0 10px 40px rgba(0,0,0,.6); }
+  .screen .bigBtn { margin-top:16px; font-size:17px; padding:14px 30px; min-width:230px; }
+  .rows { text-align:left; font-size:14px; line-height:1.9; }
+  .rows b { float:right; color:#ffcf6a; }
+  #resBtns { display:flex; gap:10px; margin-top:16px; }
+  #resBtns .btn { font-size:15px; padding:13px 18px; }
+
+  /* intro */
+  #introScreen .cardInner { min-height:190px; display:flex; align-items:center; justify-content:center; }
+  #introText { font-size:16px; line-height:1.75; font-style:italic; color:#f0dfc2; }
+  #introBtns { display:flex; gap:12px; margin-top:18px; }
+  #introBtns .btn { min-width:120px; }
+  .dots { margin-top:14px; letter-spacing:8px; font-size:13px; opacity:.7; }
+
+  /* settings */
+  .setRow { margin-top:16px; text-align:left; }
+  .setRow .setLbl { font-size:11px; letter-spacing:2px; opacity:.85; margin-bottom:7px; }
+  .segs { display:flex; gap:7px; }
+  .seg { flex:1; pointer-events:auto; border:2px solid #6d4530; background:rgba(0,0,0,.3); color:#e8d4b8;
+    border-radius:9px; padding:9px 4px; font-size:12px; font-weight:bold; font-family:inherit; letter-spacing:.5px; }
+  .seg.on { background:linear-gradient(180deg,#7a4a2a,#5a3018); border-color:#d09050; color:#ffe9c8; }
+  input[type=range] { width:100%; pointer-events:auto; accent-color:#d09050; height:26px; }
+
+  /* corner icon buttons */
+  .iconBtn { position:absolute; z-index:30; pointer-events:auto; width:40px; height:40px; border-radius:50%;
+    border:2px solid #7a4a33; background:rgba(26,15,12,.8); color:#ffd9a0; font-size:17px;
+    display:none; align-items:center; justify-content:center; }
+  #muteBtn { top:calc(10px + env(safe-area-inset-top)); right:10px; }
+  #gearBtn { top:calc(58px + env(safe-area-inset-top)); right:10px; }
+
+  #vignette { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .8s;
+    background:radial-gradient(ellipse at center, transparent 42%, rgba(120,20,0,.55) 100%); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud">
+  <div id="vignette"></div>
+
+  <div class="panel" id="shelfBox">🏺 <span id="shelfCount">0</span></div>
+
+  <div class="panel" id="stageBox">
+    <div class="step" id="stageStep">STEP 1 OF 6</div>
+    <div class="name" id="stageName">WEDGE</div>
+    <div class="sub" id="stageSub"></div>
+  </div>
+
+  <div id="meters">
+    <div class="meter">
+      <div class="lbl"><span>CLAY</span><span id="moistTag">WET</span></div>
+      <div class="bar"><i id="moistFill"></i></div>
+    </div>
+    <div class="meter">
+      <div class="lbl"><span>WOBBLE</span><span id="stabTag"></span></div>
+      <div class="bar"><i id="stabFill"></i></div>
+    </div>
+  </div>
+
+  <div id="chipRow"></div>
+
+  <div id="actions">
+    <button class="btn" id="scrapBtn">SCRAP<span class="sub">fresh clay</span></button>
+    <button class="btn" id="toolBtn">💧 SPONGE<span class="sub">re-wet · risky</span></button>
+    <button class="btn" id="fireBtn">BISQUE FIRE 🔥<span class="risk" id="riskTag">kiln risk —</span></button>
+  </div>
+
+  <div id="photoBar">
+    <button class="btn" id="photoBack" style="flex:1">← BACK</button>
+    <button class="btn" id="photoSave" style="flex:2">💾 SAVE PHOTO</button>
+  </div>
+
+  <div id="guideBar"></div>
+  <div id="banner"></div>
+  <div id="hint"></div>
+
+  <button class="iconBtn" id="muteBtn">♪</button>
+  <button class="iconBtn" id="gearBtn">⚙</button>
+
+  <!-- screens -->
+  <div class="screen" id="titleScreen">
+    <h1>Mud &amp; Ember</h1>
+    <div class="tag">a small pottery studio · wedge · throw · <i>gamble it in the kiln, twice</i></div>
+    <button class="btn bigBtn" id="startBtn">OPEN THE STUDIO</button>
+    <button class="btn bigBtn" id="introBtn" style="font-size:14px;padding:11px 30px;">↻ REPLAY INTRO</button>
+    <button class="btn bigBtn" id="setBtn" style="font-size:14px;padding:11px 30px;">⚙ SETTINGS</button>
+    <div class="tag" id="firedTag" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="screen" id="introScreen">
+    <h2>Mud &amp; Ember</h2>
+    <div class="cardInner"><div id="introText"></div></div>
+    <div class="dots" id="introDots">●○○○</div>
+    <div id="introBtns">
+      <button class="btn" id="introSkip">skip</button>
+      <button class="btn" id="introNext">next →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="settingsScreen">
+    <h2>Settings</h2>
+    <div class="cardInner">
+      <div class="setRow">
+        <div class="setLbl">VOLUME</div>
+        <input type="range" id="volRange" min="0" max="100" value="80" />
+      </div>
+      <div class="setRow">
+        <div class="setLbl">GRAPHICS</div>
+        <div class="segs" id="gfxSegs">
+          <button class="seg" data-v="low">LOW</button>
+          <button class="seg on" data-v="high">HIGH</button>
+        </div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl">CLAY FORGIVENESS</div>
+        <div class="segs" id="diffSegs">
+          <button class="seg" data-v="relaxed">RELAXED</button>
+          <button class="seg on" data-v="classic">CLASSIC</button>
+          <button class="seg" data-v="brutal">BRUTAL</button>
+        </div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl">CAMERA SWAY</div>
+        <div class="segs" id="swaySegs">
+          <button class="seg on" data-v="on">ON</button>
+          <button class="seg" data-v="off">OFF</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn bigBtn" id="setDone">DONE</button>
+  </div>
+
+  <div class="screen" id="planScreen">
+    <h2>What will you make?</h2>
+    <div class="tag">pick a form and a guide silhouette appears on the wheel</div>
+    <div class="formGrid" id="formGrid"></div>
+    <div class="tag" style="margin-top:16px; letter-spacing:2px;">📌 NOTICEBOARD</div>
+    <div id="orderList"></div>
+  </div>
+
+  <div class="screen" id="resultScreen">
+    <h2 id="resTitle">Fired!</h2>
+    <div class="cardInner">
+      <div style="font-size:15px;line-height:1.6" id="resFlavor"></div>
+      <div class="rows" id="resRows" style="margin-top:12px;"></div>
+    </div>
+    <div id="resBtns">
+      <button class="btn" id="photoBtn">📸 PHOTO</button>
+      <button class="btn" id="nextBtn">BACK TO THE WHEEL →</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ============================================================
+   Mud & Ember — a free-build pottery studio with the full
+   production pipeline: wedge → centre → throw & dry (trim at
+   leather-hard) → bisque fire → dip-glaze → glaze fire.
+   Survivors live on the shelf — permanently.
+   ============================================================ */
+
+const RINGS  = 40;
+const RADIAL = 56;
+const MAX_H  = 24;
+const MIN_H  = 5;
+
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp = (a,b,t)=>a+(b-a)*t;
+const rnd = (a=1,b)=> b===undefined ? Math.random()*a : a+Math.random()*(b-a);
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+
+/* ---------------- settings ---------------- */
+const SET = Object.assign(
+  { vol:.8, gfx:'high', diff:'classic', sway:'on' },
+  JSON.parse(localStorage.getItem('mudember_set')||'{}'));
+function saveSet(){ localStorage.setItem('mudember_set', JSON.stringify(SET)); }
+const DIFF = {
+  relaxed:{ dry:.6,  shock:.75, risk:.8  },
+  classic:{ dry:1,   shock:1,   risk:1   },
+  brutal: { dry:1.5, shock:1.3, risk:1.15},
+};
+const diff = ()=>DIFF[SET.diff]||DIFF.classic;
+
+/* ---------------- clay bodies ---------------- */
+const CLAYS = [
+  { key:'earthen',  n:'Earthenware', emoji:'',   unlock:0,
+    wet:0x8a5236, dry:0xb08558, bisque:0xc9926a, shock:1,   dryRate:1 },
+  { key:'stone',    n:'Stoneware',   emoji:'',   unlock:3,
+    wet:0x6a5a48, dry:0x9a8a70, bisque:0xb0a084, shock:.85, dryRate:.9 },
+  { key:'porcelain',n:'Porcelain',   emoji:'',   unlock:8,
+    wet:0xa8a49c, dry:0xd4d0c8, bisque:0xe8e4da, shock:1.45,dryRate:1.25 },
+];
+CLAYS.forEach(c=>{ c.wetC=new THREE.Color(c.wet); c.dryC=new THREE.Color(c.dry); c.bisqueC=new THREE.Color(c.bisque); });
+
+/* ---------------- audio ---------------- */
+const AudioEng = {
+  ctx:null, muted:false, master:null, humGain:null, warnOsc:null, warnGain:null,
+  rumbleGain:null, padGain:null,
+  init(){
+    if(this.ctx) return;
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    this.ctx = new C();
+    this.master = this.ctx.createGain(); this.master.gain.value = SET.vol; this.master.connect(this.ctx.destination);
+    const hum = this.ctx.createOscillator(); hum.type='sine'; hum.frequency.value = 46;
+    const hum2 = this.ctx.createOscillator(); hum2.type='triangle'; hum2.frequency.value = 92.7;
+    this.humGain = this.ctx.createGain(); this.humGain.gain.value = 0;
+    const hg2 = this.ctx.createGain(); hg2.gain.value = .25;
+    hum.connect(this.humGain); hum2.connect(hg2); hg2.connect(this.humGain);
+    this.humGain.connect(this.master); hum.start(); hum2.start();
+    this.warnOsc = this.ctx.createOscillator(); this.warnOsc.type='sawtooth'; this.warnOsc.frequency.value=110;
+    const wf = this.ctx.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=900;
+    this.warnGain = this.ctx.createGain(); this.warnGain.gain.value=0;
+    this.warnOsc.connect(wf); wf.connect(this.warnGain); this.warnGain.connect(this.master); this.warnOsc.start();
+    const len = this.ctx.sampleRate*2, buf = this.ctx.createBuffer(1,len,this.ctx.sampleRate);
+    const d = buf.getChannelData(0); let last=0;
+    for(let i=0;i<len;i++){ last = (last + (Math.random()*2-1)*.04)*.985; d[i]=last*3; }
+    const rs = this.ctx.createBufferSource(); rs.buffer=buf; rs.loop=true;
+    const rf = this.ctx.createBiquadFilter(); rf.type='lowpass'; rf.frequency.value=220;
+    this.rumbleGain = this.ctx.createGain(); this.rumbleGain.gain.value=0;
+    rs.connect(rf); rf.connect(this.rumbleGain); this.rumbleGain.connect(this.master); rs.start();
+    // music bus with a feedback-delay echo (music box / kalimba space)
+    this.musicGain = this.ctx.createGain(); this.musicGain.gain.value=.5; this.musicGain.connect(this.master);
+    this.echo = this.ctx.createDelay(1); this.echo.delayTime.value=.28;
+    const fb = this.ctx.createGain(); fb.gain.value=.32;
+    const wet = this.ctx.createGain(); wet.gain.value=.4;
+    this.echo.connect(fb); fb.connect(this.echo);
+    this.echo.connect(wet); wet.connect(this.musicGain);
+    // downloaded audio (audio/manifest.json) replaces the generative score & synth SFX
+    this.loadExternal().finally(()=>{ if(!this.buf.music) this.startMusic(); });
+  },
+  /* ---- optional real audio files, dropped in /audio by the studio owner ---- */
+  buf:{},
+  async loadExternal(){
+    try{
+      const man = await (await fetch('audio/manifest.json')).json();
+      for(const [k,f] of Object.entries(man)){
+        try{
+          const ab = await (await fetch('audio/'+f)).arrayBuffer();
+          this.buf[k] = await this.ctx.decodeAudioData(ab);
+        }catch(e){ /* skip files that are missing or won't decode */ }
+      }
+      if(this.buf.music){
+        const s=this.ctx.createBufferSource(); s.buffer=this.buf.music; s.loop=true;
+        const g=this.ctx.createGain(); g.gain.value=.35;
+        s.connect(g); g.connect(this.master); s.start();
+      }
+    }catch(e){ /* no manifest — fully generative audio */ }
+  },
+  playBuf(k, vol=1, rate=1){
+    if(!this.buf[k] || !this.ctx) return false;
+    const s=this.ctx.createBufferSource(); s.buffer=this.buf[k];
+    s.playbackRate.value=rate;
+    const g=this.ctx.createGain(); g.gain.value=vol;
+    s.connect(g); g.connect(this.master); s.start();
+    return true;
+  },
+  /* ---- generative studio score: slow chords, plucked pentatonic melody ---- */
+  pluck(freq, t, vol=.05, decay=1.2){
+    const o=this.ctx.createOscillator(); o.type='triangle'; o.frequency.value=freq; o.detune.value=rnd(-4,4);
+    const f=this.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=2400;
+    const g=this.ctx.createGain();
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.012);
+    g.gain.exponentialRampToValueAtTime(.0004,t+decay);
+    o.connect(f); f.connect(g); g.connect(this.musicGain); g.connect(this.echo);
+    o.start(t); o.stop(t+decay+.05);
+  },
+  startMusic(){
+    // Am — F — C — G, with A-minor pentatonic on top
+    const CHORDS = [
+      { bass:110.0,  tones:[220.0,261.6,329.6] },   // A
+      { bass:87.31,  tones:[174.6,220.0,261.6] },   // F
+      { bass:130.8,  tones:[261.6,329.6,392.0] },   // C
+      { bass:98.0,   tones:[196.0,246.9,293.7] },   // G
+    ];
+    const PENTA = [220.0,261.6,293.7,329.6,392.0,440.0,523.3,587.3];
+    const BAR = 3.4;
+    let bar=0;
+    const playBar = ()=>{
+      if(!this.ctx) return;
+      const t = this.ctx.currentTime + .08;
+      const ch = CHORDS[bar%CHORDS.length];
+      this.pluck(ch.bass, t, .075, 2.6);                       // soft bass root
+      if(bar%2===0) this.pluck(ch.tones[0]/2, t+BAR*.5, .04, 2);
+      const n = 2+Math.floor(rnd(3));                          // sparse melody
+      for(let i=0;i<n;i++){
+        const when = t + (Math.floor(rnd(8))/8)*BAR*.9 + .06;
+        const pool = Math.random()<.6 ? ch.tones : PENTA;
+        this.pluck(pick(pool)*(Math.random()<.25?2:1), when, .038+rnd(.02), rnd(.9,1.6));
+      }
+      bar++; this._musicT=setTimeout(playBar, BAR*1000);
+    };
+    playBar();
+  },
+  duckMusic(d){ if(this.musicGain) this.musicGain.gain.setTargetAtTime(d? .16:.5, this.ctx.currentTime, .6); },
+  resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
+  setVol(){ if(this.master) this.master.gain.value = this.muted?0:SET.vol; },
+  hum(v){ if(this.humGain) this.humGain.gain.setTargetAtTime(v*.16, this.ctx.currentTime, .1); },
+  warn(v){ if(!this.warnGain) return;
+    const g = clamp((v-.5)/.5,0,1)*.09;
+    this.warnGain.gain.setTargetAtTime(g,this.ctx.currentTime,.06);
+    this.warnOsc.frequency.setTargetAtTime(110+v*260,this.ctx.currentTime,.08); },
+  rumble(v){ if(this.rumbleGain) this.rumbleGain.gain.setTargetAtTime(v*.5,this.ctx.currentTime,.25); },
+  blip(freq=440,dur=.08,type='sine',vol=.12){
+    if(!this.ctx) return;
+    const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+.02);
+  },
+  noiseBurst(dur=.12,freq=1200,vol=.1){
+    if(!this.ctx) return;
+    const n=this.ctx.sampleRate*dur, b=this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const s=this.ctx.createBufferSource(); s.buffer=b;
+    const f=this.ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=freq;
+    const g=this.ctx.createGain(); g.gain.value=vol;
+    s.connect(f); f.connect(g); g.connect(this.master); s.start();
+  },
+  squish(){ if(this.playBuf('squish',.5,rnd(.85,1.15))) return; this.noiseBurst(.09, rnd(300,600), .07); },
+  scrape(){ if(this.playBuf('scrape',.5,rnd(.9,1.1))) return; this.noiseBurst(.12, rnd(1400,1900), .09); },
+  slosh(){ if(this.playBuf('slosh',.55,rnd(.9,1.1))) return; this.noiseBurst(.22, rnd(400,700), .1); },
+  creak(){ if(this.playBuf('creak',.6)) return; this.noiseBurst(.3, rnd(180,260), .12); this.blip(70,.25,'triangle',.08); },
+  crack(){ if(this.playBuf('crack',.7,rnd(.9,1.1))) return; this.noiseBurst(.05, rnd(2200,3400), .22); this.blip(90,.12,'square',.1); },
+  shatter(){ if(this.playBuf('shatter',.8)) return; for(let i=0;i<7;i++) setTimeout(()=>this.crack(), i*rnd(20,70)); this.blip(55,.5,'sine',.22); },
+  thud(){ if(this.playBuf('thud',.7)) return; this.blip(58,.3,'sine',.28); this.noiseBurst(.18,220,.16); },
+  camera(){ this.blip(1800,.05,'square',.09); this.blip(900,.08,'square',.06); },
+  chime(good=1){
+    if(this.playBuf('chime',.6,good>1.05?1.12:1)) return;
+    const notes = good>1.05 ? [523,659,784,1047,1319] : good>0 ? [523,659,784] : [392,311];
+    notes.forEach((f,i)=> setTimeout(()=>this.blip(f,.35,'triangle',.13), i*110));
+  },
+};
+window.AudioEng = AudioEng;
+$('muteBtn').addEventListener('pointerdown', e=>{
+  e.stopPropagation(); AudioEng.muted=!AudioEng.muted;
+  $('muteBtn').textContent = AudioEng.muted?'✕':'♪';
+  AudioEng.setVol();
+});
+
+/* ---------------- procedural textures ---------------- */
+function makeWoodTex(w=256,h=256,base='#6a5240',dark='#4a3828'){
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const g=c.getContext('2d');
+  g.fillStyle=base; g.fillRect(0,0,w,h);
+  for(let i=0;i<38;i++){
+    g.strokeStyle=`rgba(${30+rnd(30)|0},${20+rnd(20)|0},${12+rnd(12)|0},${rnd(.08,.3)})`;
+    g.lineWidth=rnd(1,4);
+    g.beginPath();
+    let y=rnd(h);
+    g.moveTo(0,y);
+    for(let x=0;x<=w;x+=16) g.lineTo(x, y+Math.sin(x*.05+i)*rnd(1,5));
+    g.stroke();
+  }
+  g.fillStyle=dark; g.globalAlpha=.15;
+  for(let i=0;i<200;i++) g.fillRect(rnd(w),rnd(h),rnd(1,3),rnd(1,2));
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  return t;
+}
+function makeBrickTex(){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const g=c.getContext('2d');
+  g.fillStyle='#4a3028'; g.fillRect(0,0,256,256);   // mortar
+  const bw=42, bh=20;
+  for(let row=0; row*bh<256+bh; row++){
+    const off = row%2? bw/2 : 0;
+    for(let col=-1; col*bw<256+bw; col++){
+      const r=140+rnd(50)|0, gr=70+rnd(28)|0, b=48+rnd(20)|0;
+      g.fillStyle=`rgb(${r},${gr},${b})`;
+      g.fillRect(col*bw+off+2, row*bh+2, bw-4, bh-4);
+      g.fillStyle='rgba(0,0,0,.18)';
+      for(let s=0;s<6;s++) g.fillRect(col*bw+off+2+rnd(bw-6), row*bh+2+rnd(bh-6), rnd(1,3), rnd(1,2));
+    }
+  }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  return t;
+}
+function makeClayBump(){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const g=c.getContext('2d');
+  g.fillStyle='#808080'; g.fillRect(0,0,256,256);
+  for(let i=0;i<4200;i++){
+    const v=(120+rnd(60))|0;
+    g.fillStyle=`rgba(${v},${v},${v},.55)`;
+    g.fillRect(rnd(256),rnd(256),rnd(1,2.4),rnd(1,2.4));
+  }
+  for(let y=0;y<256;y+=rnd(4,9)){
+    const v=(118+rnd(28))|0;
+    g.fillStyle=`rgba(${v},${v},${v},.5)`;
+    g.fillRect(0,y,256,1.4);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,2);
+  return t;
+}
+function makeShaftTex(){
+  const c=document.createElement('canvas'); c.width=64; c.height=256;
+  const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,'rgba(255,214,150,.30)');
+  gr.addColorStop(.7,'rgba(255,200,130,.08)');
+  gr.addColorStop(1,'rgba(255,200,130,0)');
+  g.fillStyle=gr; g.fillRect(0,0,64,256);
+  const t=new THREE.CanvasTexture(c);
+  return t;
+}
+
+/* ---------------- three.js scene ---------------- */
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+$('game').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0x241419);
+scene.background = BG.clone();
+scene.fog = new THREE.Fog(BG.clone(), 60, 150);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, .1, 300);
+/* eased camera rig: each stage sets a target; tick() glides toward it */
+const camPos = new THREE.Vector3(0,15,46), camLook = new THREE.Vector3(0,9,0);
+const camPosT = camPos.clone(), camLookT = camLook.clone();
+function setCam(px,py,pz, lx,ly,lz){ camPosT.set(px,py,pz); camLookT.set(lx,ly,lz); }
+camera.position.copy(camPos); camera.lookAt(camLook);
+
+const key = new THREE.DirectionalLight(0xffd9b0, 2.4);
+key.position.set(-16, 30, 22);
+key.castShadow = true;
+key.shadow.mapSize.set(1024,1024);
+key.shadow.camera.left=-30; key.shadow.camera.right=30;
+key.shadow.camera.top=34; key.shadow.camera.bottom=-8;
+key.shadow.camera.far=100; key.shadow.bias=-.002;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x7a90c0, .55); fill.position.set(18, 8, -6); scene.add(fill);
+scene.add(new THREE.AmbientLight(0x5a4038, .7));
+const kilnLight = new THREE.PointLight(0xff5a10, 0, 55); scene.add(kilnLight);
+const shelfLight = new THREE.PointLight(0xffc890, 22, 30, 1.6); shelfLight.position.set(0, 26, -18); scene.add(shelfLight);
+
+function applyGfx(){
+  const high = SET.gfx!=='low';
+  renderer.setPixelRatio(high? Math.min(devicePixelRatio,2) : 1);
+  renderer.shadowMap.enabled = high;
+  key.castShadow = high;
+}
+applyGfx();
+
+/* studio backdrop */
+{
+  const cvs = document.createElement('canvas'); cvs.width=16; cvs.height=256;
+  const g = cvs.getContext('2d'); const gr = g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,'#463040'); gr.addColorStop(.5,'#32202a'); gr.addColorStop(1,'#1a1016');
+  g.fillStyle=gr; g.fillRect(0,0,16,256);
+  const tex = new THREE.CanvasTexture(cvs); tex.colorSpace = THREE.SRGBColorSpace;
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(260,150), new THREE.MeshBasicMaterial({map:tex, fog:false}));
+  wall.position.set(0, 30, -55); scene.add(wall);
+
+  const woodFloor = makeWoodTex(256,256,'#4a3527','#33241a'); woodFloor.repeat.set(8,8);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(95,48),
+    new THREE.MeshStandardMaterial({map:woodFloor, roughness:.9}));
+  floor.rotation.x = -Math.PI/2; floor.position.y = -3.2; floor.receiveShadow=true; scene.add(floor);
+}
+
+/* window, light shafts and dust motes */
+{
+  const wf = new THREE.MeshStandardMaterial({color:0x3a2c20, roughness:.8});
+  const win = new THREE.Group();
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(16,22),
+    new THREE.MeshBasicMaterial({color:0xffe0b0, fog:false}));
+  win.add(pane);
+  [[0,11.4,17,1.4],[0,-11.4,17,1.4],[-8.2,0,1.4,24],[8.2,0,1.4,24],[0,0,1,24],[0,0,17,1]].forEach(([x,y,w,h])=>{
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(w,h,.8), wf);
+    bar.position.set(x,y,.3); win.add(bar);
+  });
+  win.position.set(-30, 26, -54.4); scene.add(win);
+
+  const shaftTex = makeShaftTex();
+  for(let i=0;i<3;i++){
+    const shaft = new THREE.Mesh(new THREE.PlaneGeometry(9+i*3, 58),
+      new THREE.MeshBasicMaterial({map:shaftTex, transparent:true, depthWrite:false,
+        blending:THREE.AdditiveBlending, side:THREE.DoubleSide, fog:false}));
+    shaft.position.set(-28+i*3.5, 12, -30+i*6);
+    shaft.rotation.set(-.35, .25, .38);
+    scene.add(shaft);
+  }
+}
+const MOTES_N=54;
+const moteGeo = new THREE.BufferGeometry();
+moteGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MOTES_N*3),3));
+const motes = Array.from({length:MOTES_N},()=>({
+  p:new THREE.Vector3(rnd(-32,-2), rnd(2,26), rnd(-34,0)),
+  v:new THREE.Vector3(rnd(.1,.4), rnd(-.15,-.02), rnd(.05,.2)), s:rnd(1)}));
+scene.add(new THREE.Points(moteGeo, new THREE.PointsMaterial({
+  color:0xffd9a0, size:.22, transparent:true, opacity:.5,
+  blending:THREE.AdditiveBlending, depthWrite:false })));
+
+/* pottery wheel + water bucket */
+const wheel = new THREE.Group(); scene.add(wheel);
+{
+  const wood = makeWoodTex();
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(9,9.3,1.3,48),
+    new THREE.MeshStandardMaterial({map:wood, roughness:.62, metalness:.05}));
+  head.position.y = -.66; head.receiveShadow=true; head.castShadow=true; wheel.add(head);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(9.05,.28,10,48),
+    new THREE.MeshStandardMaterial({color:0x5a4632, roughness:.5, metalness:.35}));
+  rim.rotation.x=Math.PI/2; rim.position.y=-.1; wheel.add(rim);
+  for(let i=0;i<5;i++){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(3.2,.1,.5),
+      new THREE.MeshStandardMaterial({color:0x3c2c1e, roughness:1}));
+    const a = i/5*Math.PI*2;
+    m.position.set(Math.cos(a)*5.6, .02, Math.sin(a)*5.6); m.rotation.y = -a;
+    wheel.add(m);
+  }
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(3.2,4.8,2.3,24),
+    new THREE.MeshStandardMaterial({color:0x3c2c20, roughness:.95}));
+  base.position.y=-2.5; base.castShadow=true; scene.add(base);
+
+  const bucket = new THREE.Group();
+  const bw = new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.1,3.4,18,1,true),
+    new THREE.MeshStandardMaterial({color:0x77706a, roughness:.5, metalness:.4, side:THREE.DoubleSide}));
+  bucket.add(bw);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(2.45,18),
+    new THREE.MeshStandardMaterial({color:0x5a4636, roughness:.15, metalness:.1}));
+  water.rotation.x=-Math.PI/2; water.position.y=1.2; bucket.add(water);
+  bucket.position.set(13.5,-1.5,6); bucket.children.forEach(c=>c.castShadow=true);
+  scene.add(bucket);
+}
+
+/* the kiln — a brick beast in the corner */
+const KILN_POS = new THREE.Vector3(-22, -3.2, -8);
+const POT_KILN = new THREE.Vector3(-22, -2.9, -8);
+const kilnG = new THREE.Group();
+kilnG.position.copy(KILN_POS);
+kilnG.rotation.y = .85;
+scene.add(kilnG);
+let kilnDoor, peephole;
+{
+  const brick = makeBrickTex(); brick.repeat.set(2.2,2.2);
+  const bm = new THREE.MeshStandardMaterial({map:brick, roughness:.92});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(15,17,13), bm);
+  body.position.y=8.5; body.castShadow=true; body.receiveShadow=true; kilnG.add(body);
+  const brick2 = makeBrickTex(); brick2.repeat.set(.8,1.6);
+  const chimney = new THREE.Mesh(new THREE.BoxGeometry(4,9,4),
+    new THREE.MeshStandardMaterial({map:brick2, roughness:.92}));
+  chimney.position.set(3,21.5,-2); chimney.castShadow=true; kilnG.add(chimney);
+  // dark opening in the front face
+  const opening = new THREE.Mesh(new THREE.PlaneGeometry(8.6,11),
+    new THREE.MeshBasicMaterial({color:0x0a0503}));
+  opening.position.set(0,6.5,6.53); kilnG.add(opening);
+  // arch lintel
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(10.4,1.4,1.4), bm);
+  lintel.position.set(0,12.4,6.6); kilnG.add(lintel);
+  // sliding iron door
+  kilnDoor = new THREE.Mesh(new THREE.BoxGeometry(9.6,12,.9),
+    new THREE.MeshStandardMaterial({color:0x33302c, roughness:.45, metalness:.7}));
+  kilnDoor.position.set(0,6.5,7.1); kilnG.add(kilnDoor);
+  peephole = new THREE.Mesh(new THREE.CircleGeometry(.85,20),
+    new THREE.MeshBasicMaterial({color:0xff6a10}));
+  peephole.position.set(0,6.8,7.6); peephole.material.transparent=true; peephole.material.opacity=0;
+  kilnG.add(peephole);
+  // ember bed inside
+  const embers = new THREE.Mesh(new THREE.PlaneGeometry(9,9),
+    new THREE.MeshBasicMaterial({color:0x571804}));
+  embers.rotation.x=-Math.PI/2; embers.position.set(0,.35,2); kilnG.add(embers);
+}
+const DOOR_CLOSED_Y = 6.5, DOOR_OPEN_Y = 16.5;
+kilnDoor.position.y = DOOR_OPEN_Y;
+
+/* the glaze tub */
+const tub = new THREE.Group(); scene.add(tub);
+const LIQ_Y = 8.5;
+let liquid;
+{
+  const wallMat = new THREE.MeshStandardMaterial({color:0x8a8078, roughness:.55, metalness:.15, side:THREE.DoubleSide});
+  const walls = new THREE.Mesh(new THREE.CylinderGeometry(10.5,9.5,12.2,36,1,true), wallMat);
+  walls.position.y = 2.9; tub.add(walls);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(10.5,.4,10,36), wallMat);
+  rim.rotation.x=Math.PI/2; rim.position.y=9; tub.add(rim);
+  liquid = new THREE.Mesh(new THREE.CircleGeometry(10.2,36),
+    new THREE.MeshStandardMaterial({color:0x1f6a6a, roughness:.25, metalness:.05}));
+  liquid.rotation.x = -Math.PI/2; liquid.position.y = LIQ_Y; tub.add(liquid);
+  tub.visible = false;
+}
+
+/* the noticeboard (commissions live here in spirit) */
+{
+  const board = new THREE.Mesh(new THREE.BoxGeometry(16,11,.7),
+    new THREE.MeshStandardMaterial({color:0x7a5c38, roughness:.95}));
+  board.position.set(28,21,-54.4); scene.add(board);
+  const frameMat = new THREE.MeshStandardMaterial({color:0x4a3626, roughness:.8});
+  [[0,5.9,17,1.2],[0,-5.9,17,1.2],[-8.6,0,1.2,13],[8.6,0,1.2,13]].forEach(([x,y,w,h])=>{
+    const f=new THREE.Mesh(new THREE.BoxGeometry(w,h,.9), frameMat);
+    f.position.set(28+x,21+y,-54.2); scene.add(f);
+  });
+  for(let i=0;i<3;i++){
+    const note=new THREE.Mesh(new THREE.PlaneGeometry(3.4,4.2),
+      new THREE.MeshStandardMaterial({color:0xe8ddc0, roughness:.9}));
+    note.position.set(23.5+i*4.5+rnd(-.5,.5), 21+rnd(-2,2), -53.9);
+    note.rotation.z=rnd(-.12,.12);
+    scene.add(note);
+  }
+}
+
+/* the shelf */
+const shelfGroup = new THREE.Group(); scene.add(shelfGroup);
+{
+  const wood = makeWoodTex(256,64,'#5a4430','#3a2a1c'); wood.repeat.set(4,1);
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(40,.8,5.6),
+    new THREE.MeshStandardMaterial({map:wood, roughness:.8}));
+  plank.position.set(0, 20.5, -24); plank.receiveShadow=true; shelfGroup.add(plank);
+  const plank2 = plank.clone(); plank2.position.y=27.5; shelfGroup.add(plank2);
+  [[-19,-24],[19,-24]].forEach(([x,z])=>{
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(1,32,1),
+      new THREE.MeshStandardMaterial({color:0x4a3626, roughness:.9}));
+    leg.position.set(x, 14, z); shelfGroup.add(leg);
+  });
+}
+const SHELF_SLOTS = [
+  [-15,20.9],[ -7.5,20.9],[0,20.9],[7.5,20.9],[15,20.9],
+  [-15,27.9],[ -7.5,27.9],[0,27.9],[7.5,27.9],[15,27.9],
+];
+const shelfPieces = [];
+window.shelfPieces = shelfPieces;
+
+/* build a static keepsake mesh from serialized piece data */
+function makePieceMesh(d){
+  const n=d.r.length, radial=28;
+  const rows=n*2, pos=new Float32Array(rows*radial*3), col=new Float32Array(rows*radial*3);
+  const geo=new THREE.BufferGeometry();
+  const bisqueC = new THREE.Color(d.bisque||0xc9926a);
+  // layer stack (older saves carried a single glaze+frac)
+  const layers = (d.layers || (d.glaze? [{c:d.glaze, frac:d.frac||0}] : []))
+    .map(l=>({cC:new THREE.Color(l.c), frac:l.frac, waxed:!!l.waxed}));
+  const paint = new THREE.Color(), tmp = new THREE.Color();
+  const idx=[];
+  for(let k=0;k<rows-1;k++) for(let j=0;j<radial;j++){
+    const a=k*radial+j, b=k*radial+(j+1)%radial, c=(k+1)*radial+j, e=(k+1)*radial+(j+1)%radial;
+    idx.push(a,c,b, b,c,e);
+  }
+  for(let i=0;i<n;i++){
+    const yn=i/(n-1), yy=yn*d.h, rr=d.r[i]+Math.sin(yn*44)*.03;
+    const rin=Math.max(rr-(d.t||1),.05), yIn=Math.max(yy,.6);
+    let has=false, waxMax=0;
+    for(const L of layers){
+      if(yn > waxMax && yn <= L.frac+.001){
+        if(has){ tmp.copy(L.cC).lerp(paint,.35).multiplyScalar(.96); paint.copy(tmp); }
+        else { paint.copy(L.cC); has=true; }
+      }
+      if(L.waxed && L.frac>waxMax) waxMax=L.frac;
+    }
+    const c = has? paint : bisqueC;
+    const pool = 1 - (Math.sin(yn*44)<0? .07*-Math.sin(yn*44) : 0);
+    for(let j=0;j<radial;j++){
+      const a=j/radial*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+      const rOut = rr + (d.carve && d.carve!=='none'? carveOffset(d.carve, yn, j/radial) : 0);
+      const s=(.94+Math.sin(j*12.9898+i*.7)*.035)*(has?pool:1);
+      let o=(i*radial+j)*3;
+      pos[o]=ca*rOut; pos[o+1]=yy; pos[o+2]=sa*rOut;
+      col[o]=c.r*s; col[o+1]=c.g*s; col[o+2]=c.b*s;
+      o=((rows-1-i)*radial+j)*3;
+      pos[o]=ca*rin; pos[o+1]=yIn; pos[o+2]=sa*rin;
+      col[o]=c.r*s; col[o+1]=c.g*s; col[o+2]=c.b*s;
+    }
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const fin = d.finish||'gloss';
+  const mat = new THREE.MeshPhysicalMaterial({
+    color:0xffffff, vertexColors:true, envMapIntensity:.5,
+    roughness: fin==='gloss'?.14:fin==='satin'?.4:.6,
+    clearcoat: fin==='gloss'?.85:fin==='satin'?.35:.1, clearcoatRoughness:.2,
+  });
+  return new THREE.Mesh(geo, mat);
+}
+function layoutShelf(){
+  shelfPieces.forEach((p,i)=>{
+    if(i>=SHELF_SLOTS.length){ scene.remove(p.mesh); return; }
+    p.mesh.scale.setScalar(.26);
+    p.mesh.position.set(SHELF_SLOTS[i][0]+(p.jx||0), SHELF_SLOTS[i][1], -24);
+    p.mesh.rotation.y = p.jr||0;
+    p.mesh.castShadow = renderer.shadowMap.enabled;
+    scene.add(p.mesh);
+  });
+  while(shelfPieces.length > SHELF_SLOTS.length){
+    const old = shelfPieces.pop();
+    scene.remove(old.mesh); old.mesh.geometry.dispose(); old.mesh.material.dispose();
+  }
+  $('shelfCount').textContent = `${shelfPieces.length} · ${G.coins}c`;
+}
+function saveShelf(){
+  localStorage.setItem('mudember_shelf', JSON.stringify(shelfPieces.map(p=>p.data)));
+}
+function loadShelf(){
+  let arr=[];
+  try{ arr = JSON.parse(localStorage.getItem('mudember_shelf')||'[]'); }catch(e){}
+  arr.slice(0,SHELF_SLOTS.length).forEach(d=>{
+    shelfPieces.push({data:d, mesh:makePieceMesh(d), jx:rnd(-.6,.6), jr:rnd(Math.PI*2)});
+  });
+  layoutShelf();
+}
+function addToShelf(){
+  let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
+  const d = {
+    h:+pot.h.toFixed(2),
+    r:Array.from(pot.r).map(v=>+v.toFixed(2)),
+    t:+mean.toFixed(2),
+    layers:pot.layers.map(l=>({c:'#'+l.cC.getHexString(), frac:+l.frac.toFixed(2), waxed:!!l.waxed})),
+    bisque:'#'+pot.clay.bisqueC.getHexString(),
+    carve:pot.carve,
+    finish:glazeFinish(),
+    kind:classifyPiece(),
+  };
+  shelfPieces.unshift({data:d, mesh:makePieceMesh(d), jx:rnd(-.6,.6), jr:rnd(Math.PI*2)});
+  layoutShelf();
+  saveShelf();
+}
+
+/* ---------------- pot geometry ---------------- */
+const clayBump = makeClayBump();
+const clayMat = new THREE.MeshPhysicalMaterial({
+  color:CLAYS[0].wetC.clone(), roughness:.5, metalness:0, vertexColors:true,
+  bumpMap:clayBump, bumpScale:.35, envMapIntensity:.5,
+  clearcoat:.45, clearcoatRoughness:.5,
+  emissive:new THREE.Color(0xff4400), emissiveIntensity:0,
+});
+
+const ROWS = RINGS*2;
+const vertCount = ROWS*RADIAL;
+const potGeo = new THREE.BufferGeometry();
+const speckle = new Float32Array(vertCount);
+/* glaze drip pattern, re-rolled per piece */
+const dripLen = new Float32Array(RADIAL);
+const edgeJit = new Float32Array(RADIAL);
+function rollDrips(){
+  for(let j=0;j<RADIAL;j++){ dripLen[j]=0; edgeJit[j]=rnd(-.015,.015); }
+  for(let k=0;k<6;k++) dripLen[Math.floor(rnd(RADIAL))]=rnd(.05,.14);
+}
+{
+  const pos = new Float32Array(vertCount*3);
+  const col = new Float32Array(vertCount*3);
+  const uv  = new Float32Array(vertCount*2);
+  potGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  potGeo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  potGeo.setAttribute('uv', new THREE.BufferAttribute(uv,2));
+  const idx = [];
+  for(let k=0;k<ROWS-1;k++) for(let j=0;j<RADIAL;j++){
+    const a=k*RADIAL+j, b=k*RADIAL+(j+1)%RADIAL, c=(k+1)*RADIAL+j, d=(k+1)*RADIAL+(j+1)%RADIAL;
+    idx.push(a,c,b, b,c,d);
+  }
+  potGeo.setIndex(idx);
+  for(let k=0;k<ROWS;k++) for(let j=0;j<RADIAL;j++){
+    const v = k*RADIAL+j;
+    speckle[v] = .94 + Math.sin(j*12.9898+k*.7)*.5*.07;
+    col[v*3]=speckle[v]; col[v*3+1]=speckle[v]; col[v*3+2]=speckle[v];
+    uv[v*2]=j/RADIAL*3; uv[v*2+1]=k/ROWS*2;
+  }
+}
+function ringOfRow(k){ return k<RINGS ? k : ROWS-1-k; }
+/* vertex-color repaint: bisque base, then the glaze layer stack.
+   Later dips paint over earlier ones (with a blended tint where they
+   overlap) — unless the earlier layer was WAXED, which protects it.
+   Pooling darkens the throwing valleys; the top dip line is jittered
+   with darker drip streaks running from it. */
+const _paintA = new THREE.Color(), _paintB = new THREE.Color();
+function glazeFinish(){ return pot.layers.length? pot.layers[pot.layers.length-1].f : 'gloss'; }
+function repaintColors(){
+  const col = potGeo.attributes.color.array;
+  const speckly = glazeFinish()==='speckle';
+  for(let k=0;k<ROWS;k++){
+    const ring = ringOfRow(k);
+    const yn = ring/(RINGS-1);
+    const ridge = Math.sin(yn*44);
+    const pool = 1 - (ridge<0? .09*-ridge : -.03*ridge);
+    for(let j=0;j<RADIAL;j++){
+      const v=k*RADIAL+j;
+      let s=speckle[v];
+      if(!pot.bisqued){ col[v*3]=s; col[v*3+1]=s; col[v*3+2]=s; continue; }
+      let has=false, waxMax=0, topB=0;
+      for(const L of pot.layers){
+        const bound = L.frac + edgeJit[j];
+        if(yn > waxMax && yn <= bound){
+          if(has){ _paintB.copy(L.cC).lerp(_paintA,.35).multiplyScalar(.96); _paintA.copy(_paintB); }
+          else { _paintA.copy(L.cC); has=true; }
+          if(bound>topB) topB=bound;
+        }
+        if(L.waxed && L.frac>waxMax) waxMax=L.frac;
+      }
+      const c = has? _paintA : pot.clay.bisqueC;
+      if(has){
+        s*=pool;
+        if(dripLen[j]>0 && yn>topB-dripLen[j] && yn<=topB) s*=.86;
+        if(speckly) s*= .88 + Math.sin(v*7.31)*.5*.2;
+      }
+      col[v*3]=c.r*s; col[v*3+1]=c.g*s; col[v*3+2]=c.b*s;
+    }
+  }
+  potGeo.attributes.color.needsUpdate = true;
+}
+
+/* potRoot carries the pot to the kiln and back */
+const potRoot = new THREE.Group(); scene.add(potRoot);
+const potMesh = new THREE.Mesh(potGeo, clayMat);
+potMesh.castShadow=true; potMesh.receiveShadow=true;
+potRoot.add(potMesh);
+const baseCap = new THREE.Mesh(new THREE.CircleGeometry(1,RADIAL), clayMat);
+baseCap.rotation.x = -Math.PI/2; potRoot.add(baseCap);
+
+let crackSprite=null;
+{
+  const c=document.createElement('canvas'); c.width=64; c.height=256;
+  const g=c.getContext('2d'); g.strokeStyle='rgba(20,8,4,.95)'; g.lineWidth=4; g.lineCap='round';
+  g.beginPath(); let x=32;
+  g.moveTo(x,10);
+  for(let y=10;y<250;y+=18){ x+=rnd(-14,14); x=clamp(x,10,54); g.lineTo(x,y); }
+  g.stroke();
+  const t=new THREE.CanvasTexture(c);
+  crackSprite = new THREE.Mesh(new THREE.PlaneGeometry(2.2,9),
+    new THREE.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2}));
+  crackSprite.visible=false; potRoot.add(crackSprite);
+}
+
+/* shards */
+const shards=[];
+const shardGeo = new THREE.TetrahedronGeometry(.9);
+function spawnShards(){
+  clearShards();
+  for(let i=0;i<26;i++){
+    const m = new THREE.Mesh(shardGeo, new THREE.MeshStandardMaterial({color:clayMat.color.clone(), roughness:.85}));
+    const ri = Math.floor(rnd(RINGS)), a = rnd(Math.PI*2);
+    const rr = pot.r[ri]||3;
+    m.position.set(Math.cos(a)*rr, ri/(RINGS-1)*pot.h, Math.sin(a)*rr).add(potRoot.position);
+    m.userData.v = new THREE.Vector3(Math.cos(a)*rnd(5,12), rnd(5,15), Math.sin(a)*rnd(5,12));
+    m.userData.w = new THREE.Vector3(rnd(-9,9),rnd(-9,9),rnd(-9,9));
+    m.userData.life = rnd(1.6,2.4);
+    m.scale.setScalar(rnd(.5,1.6));
+    m.castShadow = renderer.shadowMap.enabled;
+    scene.add(m); shards.push(m);
+  }
+}
+function clearShards(){ shards.forEach(m=>{scene.remove(m); m.material.dispose();}); shards.length=0; }
+
+/* slip splatter / trim dust */
+const SPLAT_N = 46;
+const splatGeo = new THREE.BufferGeometry();
+splatGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SPLAT_N*3),3));
+const splats = Array.from({length:SPLAT_N},()=>({p:new THREE.Vector3(0,-99,0), v:new THREE.Vector3(), life:0}));
+scene.add(new THREE.Points(splatGeo, new THREE.PointsMaterial({color:0x6a4028, size:.5})));
+let splatIdx=0;
+function emitSplat(y, r){
+  const s = splats[splatIdx++ % SPLAT_N];
+  const a = rnd(Math.PI*2);
+  s.p.set(Math.cos(a)*r, y, Math.sin(a)*r);
+  s.v.set(Math.cos(a)*rnd(3,9), rnd(2,7), Math.sin(a)*rnd(3,9));
+  s.life = rnd(.5,.9);
+}
+
+/* steam wisps off wet clay */
+const WISP_N = 10;
+const wispGeo = new THREE.BufferGeometry();
+wispGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(WISP_N*3),3));
+const wisps = Array.from({length:WISP_N},()=>({p:new THREE.Vector3(0,-99,0), life:0, max:1}));
+scene.add(new THREE.Points(wispGeo, new THREE.PointsMaterial({
+  color:0xcfd8e8, size:.9, transparent:true, opacity:.16, depthWrite:false })));
+let wispIdx=0;
+function emitWisp(){
+  const s = wisps[wispIdx++ % WISP_N];
+  const a=rnd(Math.PI*2), ri=Math.floor(rnd(RINGS*.5,RINGS-1));
+  s.p.set(Math.cos(a)*pot.r[ri], ri/(RINGS-1)*pot.h, Math.sin(a)*pot.r[ri]);
+  s.life = s.max = rnd(1.2,2.2);
+}
+
+/* ember sparks at the kiln reveal */
+const SPARK_N = 30;
+const sparkGeo = new THREE.BufferGeometry();
+sparkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SPARK_N*3),3));
+const sparks = Array.from({length:SPARK_N},()=>({p:new THREE.Vector3(0,-99,0), v:new THREE.Vector3(), life:0}));
+scene.add(new THREE.Points(sparkGeo, new THREE.PointsMaterial({
+  color:0xffa030, size:.42, transparent:true, opacity:.95,
+  blending:THREE.AdditiveBlending, depthWrite:false })));
+function burstSparks(){
+  const fwd = new THREE.Vector3(Math.sin(kilnG.rotation.y),0,Math.cos(kilnG.rotation.y));
+  sparks.forEach(s=>{
+    s.p.copy(KILN_POS).addScaledVector(fwd,7).add(new THREE.Vector3(rnd(-3,3), rnd(3,11), rnd(-1,1)));
+    s.v.set(fwd.x*rnd(2,9)+rnd(-3,3), rnd(1,7), fwd.z*rnd(2,9)+rnd(-3,3));
+    s.life = rnd(.5,1.4);
+  });
+}
+
+/* ---------------- pot state & simulation ---------------- */
+const pot = {
+  h:8, r:new Float32Array(RINGS), t:new Float32Array(RINGS), shock:new Float32Array(RINGS),
+  moisture:1, cracks:0, collapsed:false, slump:0, slumpR:new Float32Array(RINGS), slumpH:8,
+  instab:0, wobAmp:0, overT:0,
+  bubbles:0, offCenter:1,
+  clay:CLAYS[0],
+  bisqued:false, bisqueCracked:false,
+  carve:'none',
+  layers:[],                                  // glaze dips, in order: {c,n,f,frac,thk,waxed}
+  activeGlaze:null, glazedFrac:0, glazeThk:0,
+  y:0,
+};
+window.pot = pot;
+function newLump(){
+  pot.h = 8;
+  for(let i=0;i<RINGS;i++){
+    const yn=i/(RINGS-1);
+    pot.r[i] = 5.6 - 1.8*Math.pow(yn,1.25);
+    pot.t[i] = 1.75;
+    pot.shock[i]=0;
+  }
+  pot.moisture=1; pot.cracks=0; pot.collapsed=false; pot.slump=0;
+  pot.instab=0; pot.wobAmp=0; pot.overT=0;
+  pot.bubbles = 4+Math.floor(rnd(3)); pot.offCenter=1;
+  pot.bisqued=false; pot.bisqueCracked=false;
+  pot.carve='none';
+  pot.layers=[]; pot.activeGlaze=null; pot.glazedFrac=0; pot.glazeThk=0; pot.y=0;
+  potRoot.position.set(0,0,0);
+  rollDrips();
+  clayMat.color.copy(pot.clay.wetC); clayMat.roughness=.5; clayMat.clearcoat=.45; clayMat.emissiveIntensity=0;
+  repaintColors();
+  crackSprite.visible=false; potMesh.visible=true; baseCap.visible=true;
+}
+
+let spin=0;
+const ringPhase = Array.from({length:RINGS},(_,i)=>i*.55);
+let wedgeAnim=0;
+
+function rebuildPot(){
+  const posAttr = potGeo.attributes.position; const pos = posAttr.array;
+  const slumpT = pot.slump;
+  const floorY = Math.max(pot.t[0]*.85, .6);
+  const sy = 1-wedgeAnim*.16, sxz = 1+wedgeAnim*.12;
+  const offA = spin*1.0;
+  const offX = pot.offCenter*.9*Math.sin(offA), offZ = pot.offCenter*.9*Math.cos(offA);
+  for(let i=0;i<RINGS;i++){
+    const yn = i/(RINGS-1);
+    let rr = pot.r[i]*sxz, yy = yn*pot.h*sy + pot.y;
+    if(slumpT>0){ rr = lerp(rr, pot.slumpR[i], slumpT); yy = yn*lerp(pot.h, pot.slumpH, slumpT)+pot.y; }
+    rr += Math.sin(yn*44)*.03;
+    const lip = Math.min(pot.t[i], .8);
+    if(i===RINGS-1) rr -= lip*.28;                    // rounded rim: ease the outer edge in
+    const wob = pot.wobAmp * (0.15+0.85*yn) * (1+pot.shock[i]*.4);
+    const cx = offX*(.3+.7*yn) + wob*Math.sin(spin*1.0+ringPhase[i]);
+    const cz = offZ*(.3+.7*yn) + wob*Math.cos(spin*1.31+ringPhase[i]);
+    let rin = Math.max(rr - pot.t[i], .05);
+    if(i===RINGS-1) rin += lip*.28;                   // ...and the inner edge out
+    let yIn = Math.max(yy, floorY+pot.y);
+    if(i===RINGS-1) yIn = yy + lip*.22;               // slight dome on the lip
+    const carved = pot.carve!=='none' && !pot.collapsed;
+    for(let j=0;j<RADIAL;j++){
+      const a = j/RADIAL*Math.PI*2 + spin;
+      const ca=Math.cos(a), sa=Math.sin(a);
+      const rOut = carved? rr + carveOffset(pot.carve, yn, j/RADIAL) : rr;
+      let o = (i*RADIAL+j)*3;
+      pos[o]=cx+ca*rOut; pos[o+1]=yy; pos[o+2]=cz+sa*rOut;
+      o = ((ROWS-1-i)*RADIAL+j)*3;
+      pos[o]=cx+ca*rin; pos[o+1]=yIn; pos[o+2]=cz+sa*rin;
+    }
+  }
+  posAttr.needsUpdate = true;
+  potGeo.computeVertexNormals();
+  potGeo.computeBoundingSphere();
+  baseCap.scale.setScalar(Math.max(pot.r[0],.5));
+  baseCap.position.set(offX*.3, .01+pot.y, offZ*.3);
+}
+
+function computeInstability(){
+  let worst=0;
+  const dy = pot.h/(RINGS-1);
+  for(let i=0;i<RINGS;i++){
+    const yn=i/(RINGS-1);
+    const thinN = clamp((.42-pot.t[i])/.42,0,1);
+    const slope = i<RINGS-1 ? clamp((Math.abs(pot.r[i+1]-pot.r[i])/dy - 1.15)*.5, 0, .9) : 0;
+    const hw = .3 + .8*yn;
+    const s = hw*(thinN*1.05 + slope + pot.shock[i]*(.35 + thinN*1.15));
+    if(s>worst) worst=s;
+  }
+  let minLow=9;
+  for(let i=2;i<RINGS*.5;i++) minLow=Math.min(minLow,pot.t[i]);
+  const topR = pot.r[RINGS-4];
+  worst += clamp((topR-4.5)*.06,0,.35) * clamp((.5-minLow)/.5,0,1);
+  worst *= 1 + clamp((pot.h-14)/22,0,.4);
+  worst *= 1 + pot.offCenter*1.4;
+  return worst * diff().shock * pot.clay.shock;
+}
+
+function startCollapse(){
+  pot.collapsed = true;
+  pot.slumpH = Math.max(pot.h*.42, 3.5);
+  let carry=0;
+  for(let i=0;i<RINGS;i++){
+    const yn=i/(RINGS-1);
+    carry += rnd(-.8,.8);
+    pot.slumpR[i] = clamp(pot.r[i]*(1.35-yn*.55) + Math.sin(yn*9)*1.1 + carry*.25, 1.2, 11);
+    pot.t[i] = Math.max(pot.t[i], .5);
+  }
+  AudioEng.thud();
+  banner('IT COLLAPSED!', 1.8, true);
+  guide('<b>SCRAP</b> it — or <b>BISQUE THE BLOB</b> (collectors are strange)');
+  $('chipRow').style.display='none';
+  updateButtons();
+}
+
+/* ---------------- carving patterns (leather-hard decoration) ---------------- */
+const CARVES = [
+  {key:'none',    n:'None',    sym:'✖'},
+  {key:'rings',   n:'Rings',   sym:'☰'},
+  {key:'wave',    n:'Wave',    sym:'〰'},
+  {key:'chatter', n:'Chatter', sym:'᎒᎒'},
+];
+function carveOffset(carve, yn, jn){
+  if(carve==='rings')   return -.11*Math.pow(Math.max(0,Math.sin(yn*34)),8);
+  if(carve==='wave')    return  .09*Math.sin(yn*18 + jn*Math.PI*6);
+  if(carve==='chatter') return -.07*Math.abs(Math.sin(jn*Math.PI*14))*Math.max(0,Math.sin(yn*26));
+  return 0;
+}
+
+/* ---------------- forms you can set out to make ---------------- */
+const FORMS = [
+  {key:'free',   n:'Freeform', e:'✨', d:'no guide — just you & the clay'},
+  {key:'cup',    n:'Cup',      e:'☕', d:'small & friendly',      h:9,  s:3.8, r:yn=>.8+.12*yn+.05*Math.sin(yn*3)},
+  {key:'bowl',   n:'Bowl',     e:'🥣', d:'wide & open',           h:8,  s:5.4, r:yn=>.45+.95*Math.pow(yn,.7)},
+  {key:'vase',   n:'Vase',     e:'🏺', d:'tall, narrow neck',     h:17, s:4.6, r:yn=>.55+.75*Math.sin(yn*2.6+.3)-.35*Math.pow(yn,3)},
+  {key:'jug',    n:'Jug',      e:'🫖', d:'stout & useful',        h:14, s:4.8, r:yn=>.5+.9*Math.sin(yn*2.2+.5)*(1-yn*.35)},
+  {key:'amphora',n:'Amphora',  e:'⚱️', d:'the potter\'s test',    h:20, s:4.4, r:yn=>.35+.95*Math.sin(Math.pow(yn,.85)*2.9+.15)},
+];
+let ghostMesh = null;
+function buildGhost(f){
+  if(ghostMesh){ scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh=null; }
+  if(!f || f.key==='free') return;
+  const pts=[];
+  for(let i=0;i<=32;i++){ const yn=i/32; pts.push(new THREE.Vector2(Math.max(f.r(yn)*f.s,.1), yn*f.h)); }
+  const geo = new THREE.LatheGeometry(pts, 40);
+  // depthTest off so the guide reads through the clay like a hologram
+  ghostMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    color:0xaad4ff, transparent:true, opacity:.15, depthWrite:false, depthTest:false, side:THREE.DoubleSide }));
+  ghostMesh.renderOrder = 3;
+  ghostMesh.visible = false;
+  scene.add(ghostMesh);
+}
+function targetRadiusAt(y){
+  const f=G.form;
+  if(!f || f.key==='free' || y<0 || y>f.h) return 0;
+  return f.r(y/f.h)*f.s;
+}
+function matchPct(){
+  const f=G.form;
+  if(!f || f.key==='free' || pot.collapsed) return 0;
+  const top = Math.max(pot.h, f.h);
+  let err=0, norm=0;
+  for(let k=0;k<=36;k++){
+    const y = k/36*top;
+    const rp = y<=pot.h ? pot.r[Math.round(y/pot.h*(RINGS-1))] : 0;
+    const rt = targetRadiusAt(y);
+    err += Math.abs(rp-rt); norm += Math.max(rt,1.2);
+  }
+  return clamp(Math.exp(-2.6*err/norm)*100,0,99.4);
+}
+
+/* ---------------- glazes & piece naming ---------------- */
+const GLAZES = [
+  {n:'Ash White', c:0xe8e2d4, f:'satin'},  {n:'Ember Red', c:0xb03a24, f:'gloss'},
+  {n:'Deep Teal', c:0x1f6a6a, f:'gloss'},  {n:'Honey',     c:0xc98a2e, f:'gloss'},
+  {n:'Midnight',  c:0x27304a, f:'satin'},  {n:'Celadon',   c:0x9ec4a0, f:'gloss'},
+  {n:'Oxblood',   c:0x6a1420, f:'gloss'},  {n:'Sunbloom',  c:0xe0b83a, f:'satin'},
+  {n:'Speckled Ash', c:0xb8b0a0, f:'speckle'}, {n:'Tenmoku', c:0x38200e, f:'speckle'},
+];
+function classifyPiece(){
+  if(pot.collapsed) return pick(['sculpture','artifact','statement piece','mood']);
+  let rMax=0;
+  for(let i=0;i<RINGS;i++) if(pot.r[i]>rMax) rMax=pot.r[i];
+  const rTop = pot.r[RINGS-2], h = pot.h;
+  if(h<=8.5) return rMax > h*.62 ? 'bowl' : 'cup';
+  if(rTop < rMax*.55) return h>16 ? 'amphora' : 'vase';
+  if(rTop > rMax*.85) return h>14 ? 'umbrella stand' : 'tumbler';
+  return h>15 ? 'tall jug' : 'jug';
+}
+function wallVariance(){
+  let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
+  let vr=0; for(let i=0;i<RINGS;i++) vr+=(pot.t[i]-mean)**2;
+  return Math.sqrt(vr/RINGS);
+}
+function wallReport(){
+  const vr=wallVariance();
+  return vr<.3 ? 'even, well-thrown' : vr<.55 ? 'a little uneven' : 'wildly uneven';
+}
+
+/* ---------------- game state ---------------- */
+const G = {
+  state:'title', prevState:'title',
+  kilnT:0, kilnKind:'bisque', kilnOutcome:null, kilnApplied:false,
+  fired: +(localStorage.getItem('mudember_fired')||0),
+  coins: +(localStorage.getItem('mudember_coins')||0),
+  commission:null,
+};
+window.G = G;
+
+/* ---------------- commissions (the noticeboard) ---------------- */
+const ORDER_CUSTOMERS = [
+  ['🧙','Master Oleander'],['🦊','Bramble the Fox-Mage'],['🐸','Dewdrop'],
+  ['👵','Granny Wren'],['🌙','The Night Abbot'],['⚔️','Sir Aldous'],['🍄','Pip'],
+];
+let orders=[];
+function genOrder(){
+  const f = pick(FORMS.filter(x=>x.key!=='free'));
+  const wantGlaze = Math.random()<.6 ? pick(GLAZES).n : null;
+  const minMatch = 55 + Math.floor(rnd(4))*5;                 // 55–70%
+  const pay = Math.round((30 + minMatch*.9 + (wantGlaze?18:0) + f.h)/5)*5;
+  return { cust:pick(ORDER_CUSTOMERS), form:f.key, glaze:wantGlaze, minMatch, pay };
+}
+function loadOrders(){
+  try{ orders = JSON.parse(localStorage.getItem('mudember_orders')||'[]'); }catch(e){ orders=[]; }
+  orders = orders.filter(o=>o && FORMS.some(f=>f.key===o.form));
+  while(orders.length<2) orders.push(genOrder());
+  saveOrders();
+}
+function saveOrders(){ localStorage.setItem('mudember_orders', JSON.stringify(orders)); }
+function saveCoins(){ localStorage.setItem('mudember_coins', G.coins); }
+function coinHUD(){ $('shelfCount').textContent = `${shelfPieces.length} · ${G.coins}c`; }
+
+/* kiln cinematic timeline (seconds) */
+const KT = { travel:1.1, doorShut:1.8, heatEnd:5.2, doorOpen:5.9, done:7.0 };
+
+/* ---------------- kiln risk models ---------------- */
+function thinFrac(){ let n=0; for(let i=0;i<RINGS;i++) if(pot.t[i]<.28) n++; return Math.min(n*.045,.4); }
+function bisqueRisks(){
+  const wet = clamp((pot.moisture-.12)/.88,0,1);
+  const steam = Math.pow(wet,1.6)*.55;
+  const bubbles = Math.min(pot.bubbles*.05,.3);
+  const cracks = Math.min(pot.cracks*.06,.3);
+  const thin = thinFrac()*.35;
+  const blob = pot.collapsed?.1:0;
+  const total = clamp((steam+bubbles+cracks+thin+blob)*diff().risk, .02, .93);
+  let why='looking safe';
+  const worst = Math.max(steam,bubbles,cracks,thin);
+  if(worst>.07) why = worst===steam?'still too wet!' : worst===bubbles?'air bubbles — wedge next time'
+                    : worst===cracks?'cracked clay' : 'walls very thin';
+  return { total, steam, why };
+}
+function glazeRisks(){
+  const thin = thinFrac()*.5;
+  const uneven = clamp((wallVariance()-.35)*.15,0,.12);
+  const cracks = Math.min(pot.cracks*.035,.2);
+  const heavy = clamp((pot.glazeThk-5)*.06,0,.28);
+  const carved = pot.carve!=='none'? .02:0;   // carving thins the wall a touch
+  const total = clamp((thin+uneven+cracks+heavy+carved+.02)*diff().risk, .02, .9);
+  let why='looking safe';
+  const worst = Math.max(thin,uneven,cracks,heavy);
+  if(worst>.07) why = worst===heavy?'heavy glaze may run' : worst===thin?'walls very thin'
+                    : worst===cracks?'old cracks' : 'uneven walls';
+  return { total, heavy, why };
+}
+
+/* ---------------- HUD helpers ---------------- */
+let bannerTimer=0;
+function banner(msg, secs=1.6, warn=false){
+  const b=$('banner'); b.textContent=msg; b.className=warn?'warn':''; b.style.opacity=1;
+  bannerTimer=secs;
+}
+let hintTimer=0;
+function hint(msg, secs=6){ const h=$('hint'); h.innerHTML=msg; h.style.opacity=1; hintTimer=secs; }
+/* the always-visible "here's what to do" strip */
+function guide(html){
+  const g=$('guideBar');
+  if(!html){ g.style.display='none'; return; }
+  g.style.display='block'; g.innerHTML=html;
+}
+
+const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen'];
+function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
+
+const STAGE_INFO = {
+  wedge:    ['STEP 1 OF 6','WEDGE'],
+  center:   ['STEP 2 OF 6','CENTRE'],
+  throwing: ['STEP 3 OF 6','THROW & DRY'],
+  bisque:   ['STEP 4 OF 6','BISQUE FIRE'],
+  glazeDip: ['STEP 5 OF 6','GLAZE'],
+  glazefire:['STEP 6 OF 6','GLAZE FIRE'],
+};
+function setStage(sub=''){
+  const info = STAGE_INFO[G.state];
+  if(!info){ $('stageBox').style.display='none'; return; }
+  $('stageBox').style.display='block';
+  $('stageStep').textContent=info[0]; $('stageName').textContent=info[1];
+  $('stageSub').textContent=sub;
+}
+function setPlayHUD(on){
+  $('actions').style.display = on?'flex':'none';
+  $('shelfBox').style.display = on?'block':'none';
+  $('gearBtn').style.display = on?'flex':'none';
+  $('muteBtn').style.display = 'flex';
+  $('photoBar').style.display='none';
+  if(!on){ $('stageBox').style.display='none'; $('meters').style.display='none';
+           $('chipRow').style.display='none'; guide(null); }
+}
+function updateButtons(){
+  const s=G.state;
+  const tool=$('toolBtn'), fire=$('fireBtn'), scrap=$('scrapBtn');
+  scrap.style.display = (s==='wedge'||s==='center'||s==='throwing'||s==='glazeDip')?'block':'none';
+  tool.style.display = (s==='throwing' && !pot.collapsed)?'block':'none';
+  if(s==='throwing'){
+    if(pot.moisture>.55){ tool.innerHTML='💧 SPONGE<span class="sub">re-wet · risky</span>'; tool.disabled=false; }
+    else { tool.innerHTML='🔪 TRIM<span class="sub">even the walls</span>'; tool.disabled=false; }
+  }
+  fire.style.display = (s==='throwing'||s==='glazeDip'||s==='wedge'||s==='center')?'block':'none';
+  if(s==='wedge'||s==='center'){ fire.disabled=true; fire.innerHTML=(s==='wedge'?'WEDGE FIRST':'CENTRE FIRST')+'<span class="risk" id="riskTag">the kiln can wait</span>'; }
+  else if(s==='throwing'){ fire.disabled=false; fire.innerHTML=(pot.collapsed?'BISQUE THE BLOB 🔥':'BISQUE FIRE 🔥')+'<span class="risk" id="riskTag"></span>'; }
+  else if(s==='glazeDip'){ fire.disabled=false; fire.innerHTML='GLAZE FIRE 🔥<span class="risk" id="riskTag"></span>'; }
+}
+
+/* ---------------- chips (clay bodies / glazes) ---------------- */
+function showClayChips(){
+  const row=$('chipRow'); row.innerHTML=''; row.style.display='flex';
+  CLAYS.forEach(cl=>{
+    const locked = G.fired < cl.unlock;
+    const wrap=document.createElement('div'); wrap.className='chipWrap';
+    const el=document.createElement('button');
+    el.className='chip'+(pot.clay===cl?' on':'');
+    el.style.background='#'+cl.wet.toString(16).padStart(6,'0');
+    if(locked) el.textContent='🔒';
+    el.onclick = ()=>{
+      if(locked){ banner(`fire ${cl.unlock - G.fired} more piece${cl.unlock-G.fired>1?'s':''} to unlock ${cl.n}`, 1.6); return; }
+      pot.clay=cl;
+      localStorage.setItem('mudember_clay', cl.key);
+      row.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+      el.classList.add('on');
+      clayMat.color.copy(cl.wetC);
+      setStage(`${cl.n} · air bubbles: ${pot.bubbles}`);
+      AudioEng.blip(560,.09,'triangle',.09);
+    };
+    const lbl=document.createElement('div'); lbl.className='chipLbl';
+    lbl.textContent = locked? `${cl.n} 🔒` : cl.n;
+    wrap.appendChild(el); wrap.appendChild(lbl); row.appendChild(wrap);
+  });
+}
+function showGlazeChips(){
+  const row=$('chipRow'); row.innerHTML=''; row.style.display='flex';
+  const opts=[]; while(opts.length<3){ const g=pick(GLAZES); if(!opts.includes(g)) opts.push(g); }
+  // a commission may demand a specific glaze — make sure it's on offer
+  if(G.commission && G.commission.glaze && !opts.some(g=>g.n===G.commission.glaze))
+    opts[2] = GLAZES.find(g=>g.n===G.commission.glaze) || opts[2];
+  opts.forEach((g,i)=>{
+    const wrap=document.createElement('div'); wrap.className='chipWrap';
+    const el=document.createElement('button'); el.className='chip'+(i===0?' on':'');
+    el.style.background='#'+g.c.toString(16).padStart(6,'0');
+    el.onclick = ()=>{
+      row.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+      el.classList.add('on');
+      setGlazeColor(g);
+      AudioEng.blip(620,.09,'triangle',.09);
+    };
+    const lbl=document.createElement('div'); lbl.className='chipLbl'; lbl.textContent=g.n;
+    wrap.appendChild(el); wrap.appendChild(lbl); row.appendChild(wrap);
+  });
+  // wax resist: protects already-dipped glaze from later dips
+  {
+    const wrap=document.createElement('div'); wrap.className='chipWrap';
+    const el=document.createElement('button'); el.className='chip';
+    el.style.background='linear-gradient(180deg,#f4e8c8,#c8b890)';
+    el.textContent='🕯️';
+    el.onclick = ()=>{
+      if(!pot.layers.length){ banner('nothing to wax yet — dip first', 1.4); return; }
+      pot.layers.forEach(l=>l.waxed=true);
+      AudioEng.blip(420,.14,'triangle',.1);
+      banner('🕯️ waxed — covered glaze is protected', 1.6);
+    };
+    const lbl=document.createElement('div'); lbl.className='chipLbl'; lbl.textContent='Wax';
+    wrap.appendChild(el); wrap.appendChild(lbl); row.appendChild(wrap);
+  }
+  setGlazeColor(opts[0]);
+}
+function showCarveChips(){
+  const row=$('chipRow'); row.innerHTML=''; row.style.display='flex';
+  CARVES.forEach(cv=>{
+    const wrap=document.createElement('div'); wrap.className='chipWrap';
+    const el=document.createElement('button'); el.className='chip'+(pot.carve===cv.key?' on':'');
+    el.style.background='#4a3626'; el.textContent=cv.sym;
+    el.onclick = ()=>{
+      pot.carve=cv.key;
+      row.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+      el.classList.add('on');
+      if(cv.key!=='none'){ AudioEng.scrape(); banner('🔪 carved: '+cv.n, 1.2);
+        for(let k=0;k<5;k++) emitSplat(rnd(pot.h), pot.r[Math.floor(rnd(RINGS))]+.3); }
+      else banner('smoothed back', 1);
+    };
+    const lbl=document.createElement('div'); lbl.className='chipLbl'; lbl.textContent=cv.n;
+    wrap.appendChild(el); wrap.appendChild(lbl); row.appendChild(wrap);
+  });
+}
+
+/* ---------------- intro ---------------- */
+const INTRO = [
+  '“The river studio is yours now.<br><br>Grandmother Odile left you her wheel, her kiln, and one line of advice, chalked over the door:”',
+  '“<b>The clay remembers every hurry.</b><br><br>Wedge out the air bubbles. Centre it true — an off-centre pot wobbles forever. Pull too fast and it wobbles anyway. Fuss too long and it stiffens.”',
+  '“At leather-hard, trim the walls even. Then the first fire — the bisque. Wet clay bursts in the bisque. Air bubbles too.”',
+  '“What survives, you dip in glaze and fire again. Heavy glaze runs. Thin walls split. What survives <i>that</i> goes on the shelf… and the shelf is how they\'ll remember you.”',
+];
+let introIdx=0;
+function showIntro(){
+  G.state='intro'; introIdx=0;
+  $('introText').innerHTML=INTRO[0];
+  $('introDots').textContent='●'+'○'.repeat(INTRO.length-1);
+  $('introNext').textContent='next →';
+  showScreen('introScreen');
+  setPlayHUD(false); $('muteBtn').style.display='flex';
+  setCam(0,15,46, 0,9,0);
+}
+$('introNext').onclick = ()=>{
+  AudioEng.blip(520+introIdx*80,.1,'triangle',.09);
+  introIdx++;
+  if(introIdx>=INTRO.length){ enterStudio(); return; }
+  $('introText').innerHTML=INTRO[introIdx];
+  $('introDots').textContent='●'.repeat(introIdx+1)+'○'.repeat(INTRO.length-introIdx-1);
+  $('introNext').textContent = introIdx===INTRO.length-1 ? 'open the studio →' : 'next →';
+};
+$('introSkip').onclick = ()=> enterStudio();
+
+/* ---------------- settings ---------------- */
+function bindSegs(id, key, cb){
+  const wrap=$(id);
+  wrap.querySelectorAll('.seg').forEach(seg=>{
+    if(seg.dataset.v===SET[key]) { wrap.querySelectorAll('.seg').forEach(s=>s.classList.remove('on')); seg.classList.add('on'); }
+    seg.onclick = ()=>{
+      wrap.querySelectorAll('.seg').forEach(s=>s.classList.remove('on'));
+      seg.classList.add('on');
+      SET[key]=seg.dataset.v; saveSet(); if(cb) cb();
+      AudioEng.blip(600,.07,'triangle',.08);
+    };
+  });
+}
+bindSegs('gfxSegs','gfx',applyGfx);
+bindSegs('diffSegs','diff');
+bindSegs('swaySegs','sway');
+$('volRange').value = SET.vol*100;
+$('volRange').addEventListener('input', ()=>{ SET.vol=$('volRange').value/100; saveSet(); AudioEng.setVol(); });
+$('volRange').addEventListener('change', ()=> AudioEng.blip(700,.1,'triangle',.1));
+function openSettings(){ G.prevState=G.state; G.state='settings'; showScreen('settingsScreen'); }
+$('setDone').onclick = ()=>{
+  G.state=G.prevState;
+  if(G.state==='title'){ showScreen('titleScreen'); }
+  else { SCREENS.forEach(s=>$(s).style.display='none'); refreshStageHUD(); }
+};
+$('setBtn').onclick = openSettings;
+$('gearBtn').addEventListener('pointerdown', e=>{
+  e.stopPropagation();
+  if(['wedge','center','throwing','glazeDip'].includes(G.state)) openSettings();
+});
+
+/* ---------------- stage transitions ---------------- */
+function refreshStageHUD(){
+  setPlayHUD(['wedge','center','throwing','glazeDip'].includes(G.state));
+  $('meters').style.display = G.state==='throwing'?'block':'none';
+  if(G.state==='wedge') showClayChips();
+  else if(G.state==='glazeDip') $('chipRow').style.display='flex';
+  else if(G.state==='throwing' && pot.moisture<=.55 && !pot.collapsed) showCarveChips();
+  else $('chipRow').style.display='none';
+  updateButtons();
+  setStage($('stageSub').textContent);
+}
+function enterStudio(){
+  const savedClay = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay'));
+  if(savedClay && G.fired>=savedClay.unlock) pot.clay=savedClay;
+  newLump();
+  toPlan();
+}
+function toPlan(){
+  G.state='plan';
+  G.commission=null;
+  setPlayHUD(false); $('muteBtn').style.display='flex';
+  tub.visible=false; potMesh.visible=true; baseCap.visible=true;
+  setCam(0,15,46, 0,9,0);
+  const grid=$('formGrid'); grid.innerHTML='';
+  FORMS.forEach(f=>{
+    const el=document.createElement('button'); el.className='btn formBtn';
+    el.innerHTML=`<div class="fEmoji">${f.e}</div>${f.n}<div class="fDesc">${f.d}</div>`;
+    el.onclick=()=>{
+      G.form=f;
+      buildGhost(f);
+      AudioEng.blip(560,.09,'triangle',.09);
+      toWedge();
+    };
+    grid.appendChild(el);
+  });
+  // the noticeboard: optional commissions for coin
+  const list=$('orderList'); list.innerHTML='';
+  orders.forEach(o=>{
+    const f=FORMS.find(x=>x.key===o.form);
+    const el=document.createElement('button'); el.className='btn orderBtn';
+    el.innerHTML = `${o.cust[0]} <b>${o.cust[1]}</b> wants a ${f.n.toUpperCase()}` +
+      (o.glaze? ` in <b>${o.glaze}</b>`:'') +
+      ` · ≥${o.minMatch}% match · <span style="color:#ffcf6a">${o.pay}c</span>`;
+    el.onclick=()=>{
+      G.commission=o;
+      G.form=f;
+      buildGhost(f);
+      AudioEng.blip(660,.1,'triangle',.1);
+      banner(`commission accepted — ${o.pay}c on delivery`, 1.8);
+      toWedge();
+    };
+    list.appendChild(el);
+  });
+  showScreen('planScreen');
+}
+function toWedge(){
+  G.state='wedge';
+  SCREENS.forEach(s=>$(s).style.display='none');
+  tub.visible=false; potMesh.visible=true; baseCap.visible=true;
+  refreshStageHUD();
+  setStage(`${pot.clay.n} · air bubbles: ${pot.bubbles}`);
+  setCam(0,11,30, 0,4.5,0);
+  AudioEng.hum(.2);
+  guide('<b>TAP</b> the clay to squeeze the air bubbles out');
+  hint('Bubbles explode in the kiln. Pick a clay body below.', 5);
+}
+function toCenter(){
+  G.state='center';
+  refreshStageHUD();
+  setStage('press & hold to centre');
+  setCam(0,14,36, 0,5.5,0);
+  AudioEng.hum(1);
+  guide('<b>PRESS &amp; HOLD</b> the spinning clay to centre it');
+  hint('Off-centre clay wobbles forever.', 5);
+}
+function toThrowing(){
+  G.state='throwing';
+  refreshStageHUD();
+  setStage('');
+  setCam(0,16.5,44, 0,8,0);
+  AudioEng.hum(1);
+  guide('<b>DRAG ↔</b> to shape the wall · <b>DRAG ↑</b> near the rim to grow taller');
+  if(G.fired===0 && shelfPieces.length===0)
+    hint('Watch the wobble — ease off when it warns.<br>At leather-hard you can trim. Then: the bisque.', 8);
+}
+function startKiln(kind){
+  G.state = kind==='bisque'?'bisque':'glazefire';
+  G.kilnKind = kind;
+  SCREENS.forEach(s=>$(s).style.display='none');
+  setPlayHUD(false); $('muteBtn').style.display='flex';
+  setStage('');
+  $('stageBox').style.display='block';
+  tub.visible=false; pot.y=0;
+  G.kilnT=0; G.kilnApplied=false;
+  const risk = kind==='bisque'? bisqueRisks() : glazeRisks();
+  const roll = Math.random();
+  if(roll < risk.total*.62) G.kilnOutcome='shatter';
+  else if(roll < risk.total) G.kilnOutcome='crack';
+  else G.kilnOutcome='ok';
+  pot.wobAmp=0; pot.instab=0; pot.shock.fill(0);
+  banner(kind==='bisque'?'INTO THE BISQUE…':'THE GLAZE FIRE…', 2.2);
+  AudioEng.hum(0); AudioEng.warn(0); AudioEng.rumble(1); AudioEng.creak();
+  AudioEng.duckMusic(true);
+  setCam(-4,10,20, -20,7,-8);
+  kilnLight.position.copy(KILN_POS).add(new THREE.Vector3(0,8,4));
+  $('vignette').style.opacity=1;
+}
+function applyKilnOutcome(){
+  if(G.kilnKind==='bisque') applyBisque(); else applyGlazeFire();
+}
+function applyBisque(){
+  if(G.kilnOutcome==='shatter'){
+    spawnShards(); potMesh.visible=false; baseCap.visible=false; crackSprite.visible=false;
+    AudioEng.shatter();
+    const risks=bisqueRisks();
+    showResult('💥 BURST IN THE BISQUE!',
+      risks.steam>.2 ? 'Steam trapped in wet clay blew it apart. The clay remembers every hurry.'
+                     : 'An air pocket found the heat. Wedge longer next time.',
+      [['It was going to be','a '+classifyPiece()],['Bisque','shattered'],['Shelf','unchanged']]);
+    return;
+  }
+  pot.bisqued=true;
+  pot.moisture=0;
+  if(G.kilnOutcome==='crack'){
+    pot.bisqueCracked=true; pot.cracks++;
+    AudioEng.crack();
+    crackSprite.visible=true;
+    crackSprite.scale.set(1, pot.h/9, 1);
+    banner('bisqued — with a hairline crack', 2, true);
+  } else {
+    banner('BISQUE SURVIVED', 1.6);
+    AudioEng.chime(1);
+  }
+  clayMat.color.set(0xffffff);
+  clayMat.roughness=.8; clayMat.clearcoat=0;
+  repaintColors();
+}
+function toGlazeDip(){
+  G.state='glazeDip';
+  G._dipLayer=null;
+  potRoot.position.set(0,0,0);
+  refreshStageHUD();
+  tub.visible=true;
+  pot.y=14;
+  setStage('coverage 0%');
+  setCam(0,18,46, 0,11,0);
+  AudioEng.hum(.15);
+  guide('<b>DRAG ↓</b> to dip · pick a new colour to layer · <b>🕯️ WAX</b> protects covered glaze');
+  hint('Deeper = more coverage. Longer = thicker coat (heavy coats run!).<br>Dip, wax, switch colour, dip again for two-tone.', 8);
+  showGlazeChips();
+}
+function setGlazeColor(g){
+  pot.activeGlaze = g;
+  liquid.material.color.set(g.c);
+}
+function glazeNames(){
+  const seen=[];
+  pot.layers.forEach(l=>{ if(!seen.includes(l.n)) seen.push(l.n); });
+  return seen.join(' + ') || '—';
+}
+function applyGlazeFire(){
+  const risks=glazeRisks();
+  const kind=classifyPiece();
+  if(G.kilnOutcome==='shatter'){
+    const ran = risks.heavy>.1 && Math.random()<.6;
+    if(ran){
+      showResult('🫠 THE GLAZE RAN',
+        'The coat was too heavy. It melted down the walls and welded the piece to the kiln shelf. You chisel it free in three sad pieces.',
+        [['Piece','a '+kind],['Glaze', glazeNames()+' · heavy coat'],['Glaze fire','fused to the shelf'],['Shelf','unchanged']]);
+      potMesh.visible=false; baseCap.visible=false; crackSprite.visible=false;
+      AudioEng.crack(); AudioEng.thud();
+    } else {
+      spawnShards(); potMesh.visible=false; baseCap.visible=false; crackSprite.visible=false;
+      AudioEng.shatter();
+      showResult('💥 SPLIT IN THE GLAZE FIRE!',
+        'A flaw that survived the bisque gave way in the hotter fire. The kiln keeps what it kills.',
+        [['Piece','a '+kind],['Glaze', glazeNames()],['Glaze fire','shattered'],['Shelf','unchanged']]);
+    }
+    return;
+  }
+  const cracked = G.kilnOutcome==='crack';
+  const cov = Math.round(pot.glazedFrac*100);
+  const coat = pot.glazeThk>5?'heavy':pot.glazeThk>1.5?'good':'thin';
+  // the kiln develops each layer's colour a little differently every time
+  pot.layers.forEach(l=>{
+    l.cC.offsetHSL(rnd(-.02,.02), rnd(-.06,.06), rnd(-.03,.03));
+    if(pot.clay.key==='porcelain') l.cC.offsetHSL(0,.04,.05);   // porcelain makes glazes sing
+  });
+  const fin=glazeFinish();
+  clayMat.roughness = fin==='gloss'?.14:fin==='satin'?.4:.6;
+  clayMat.clearcoat = fin==='gloss'?.85:fin==='satin'?.35:.1;
+  clayMat.clearcoatRoughness=.18;
+  repaintColors();
+  if(cracked){ AudioEng.crack(); crackSprite.visible=true; crackSprite.scale.set(1, pot.h/9, 1); }
+  const flawless = !cracked && !pot.collapsed && !pot.bisqueCracked && risks.total<.12 && cov>70 && coat==='good';
+  let title, flavor;
+  if(pot.collapsed){
+    title = Math.random()<.25 ? '🎭 “…Avant-garde!”' : '🫤 Well. It\'s… fired.';
+    flavor = title.includes('Avant') ? 'It slumped in a way that suggests intent. You decide it was intent.'
+                                     : 'It is honest. That is the kindest word for it.';
+  } else if(flawless){
+    title='✨ FLAWLESS';
+    flavor='Wedged, centred, thrown, trimmed, bisqued, dipped, fired. Every step done right — and it shows. Odile would have said nothing, but slower than usual.';
+  } else if(cracked){
+    title='⚡ Survived… cracked';
+    flavor='It sings a sad little note when tapped. It stays on the shelf anyway. Scars are stories.';
+  } else {
+    title='🏺 A finished '+kind;
+    flavor=pick([
+      'The glaze pooled beautifully in the throwing rings.',
+      'Warm from the kiln, it fits your hands exactly.',
+      'The wheel, both fires, and you — all in agreement today.']);
+  }
+  const rows=[['Piece','a '+kind],
+    ...(G.form && G.form.key!=='free' && !pot.collapsed ? [['Sketch', `${G.form.n} · ${Math.round(matchPct())}%`]] : []),
+    ['Clay', pot.clay.n],
+    ...(pot.carve!=='none' ? [['Decoration', CARVES.find(c=>c.key===pot.carve).n+'-carved']] : []),
+    ['Bisque', pot.bisqueCracked?'hairline crack':'clean'],
+    ['Glaze', glazeNames()+' · '+cov+'%'],
+    ['Coat', coat],
+    ['Walls', wallReport()],
+    ['Glaze fire', cracked?'cracked but standing':flawless?'flawless':'survived']];
+  /* commission delivery */
+  if(G.commission){
+    const o=G.commission;
+    const m=Math.round(matchPct());
+    const glazeOK = !o.glaze || pot.layers.some(l=>l.n===o.glaze && l.frac>=.4);
+    if(!pot.collapsed && m>=o.minMatch && glazeOK){
+      G.coins += o.pay; saveCoins();
+      rows.push(['Commission', `fulfilled! +${o.pay}c`]);
+      flavor = `${o.cust[1]} pays up, delighted. ` + flavor;
+      const idx=orders.indexOf(o);
+      if(idx>=0) orders.splice(idx,1);
+      orders.push(genOrder()); saveOrders();
+      AudioEng.chime(1.2);
+    } else {
+      rows.push(['Commission', pot.collapsed? 'not this… — still posted'
+        : !glazeOK? `wanted ${o.glaze} — still posted`
+        : `needs ≥${o.minMatch}% match (got ${m}%) — still posted`]);
+    }
+    G.commission=null;
+  }
+  G.fired++; localStorage.setItem('mudember_fired', G.fired);
+  addToShelf();
+  rows.push(['Shelf', shelfPieces.length+' piece'+(shelfPieces.length>1?'s':'')]);
+  AudioEng.chime(flawless?1.2:1);
+  showResult(title, flavor, rows, true);
+}
+/* prepares the result card; the kiln timeline shows it when the door is open */
+function showResult(title, flavor, rows, survived=false){
+  $('resTitle').textContent = title;
+  $('resFlavor').textContent = flavor;
+  $('resRows').innerHTML = rows.map(r=>`<div>${r[0]}<b>${r[1]}</b></div>`).join('');
+  $('photoBtn').style.display = survived? 'block':'none';
+  $('stageBox').style.display='none';
+}
+
+/* ---------------- photo mode ---------------- */
+$('photoBtn').onclick = ()=>{
+  G.state='photo';
+  showScreen('');
+  SCREENS.forEach(s=>$(s).style.display='none');
+  $('photoBar').style.display='flex';
+  $('muteBtn').style.display='none'; $('gearBtn').style.display='none';
+  potRoot.position.set(0,0,0); pot.y=0;
+  let rMax=0; for(let i=0;i<RINGS;i++) rMax=Math.max(rMax,pot.r[i]);
+  const d = clamp(Math.max(pot.h*1.9, rMax*4.2), 18, 46);
+  setCam(0, pot.h*.6+2, d, 0, pot.h*.42, 0);
+};
+$('photoSave').onclick = ()=>{
+  renderer.render(scene, camera);
+  const a=document.createElement('a');
+  a.href=renderer.domElement.toDataURL('image/png');
+  a.download='mud-and-ember.png';
+  a.click();
+  AudioEng.camera();
+  banner('saved 📸', 1.2);
+};
+$('photoBack').onclick = ()=>{
+  $('photoBar').style.display='none';
+  $('muteBtn').style.display='flex';
+  G.state='result';
+  showScreen('resultScreen');
+};
+
+$('startBtn').onclick = ()=>{
+  AudioEng.init(); AudioEng.resume();
+  if(!localStorage.getItem('mudember_intro')){ localStorage.setItem('mudember_intro','1'); showIntro(); }
+  else enterStudio();
+};
+$('introBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); showIntro(); };
+$('nextBtn').onclick  = ()=> enterStudio();
+$('scrapBtn').onclick = ()=>{
+  if(!['wedge','center','throwing','glazeDip'].includes(G.state)) return;
+  AudioEng.thud();
+  banner('FRESH CLAY', 1);
+  enterStudio();
+};
+$('toolBtn').onclick = ()=>{
+  if(G.state!=='throwing' || pot.collapsed) return;
+  if(pot.moisture>.55){
+    if(pot.moisture>.9){ banner('already soaked', 1); return; }
+    pot.moisture = Math.min(1, pot.moisture+.22);
+    for(let i=0;i<RINGS;i++) pot.shock[i]=Math.min(pot.shock[i]+.3, 1.3);
+    AudioEng.squish(); AudioEng.squish();
+    banner('💧 re-wet — careful, it\'s soft', 1.3);
+  } else {
+    let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
+    for(let i=0;i<RINGS;i++){
+      pot.t[i]=clamp(lerp(pot.t[i],mean,.35)*.96, .12, 3);
+      pot.shock[i]=Math.min(pot.shock[i]+.12,1.3);
+    }
+    AudioEng.scrape();
+    for(let k=0;k<4;k++) emitSplat(rnd(pot.h), pot.r[Math.floor(rnd(RINGS))]+.3);
+    banner('🔪 trimmed — '+wallReport(), 1.3);
+  }
+};
+$('fireBtn').onclick = ()=>{
+  if(G.state==='throwing') startKiln('bisque');
+  else if(G.state==='glazeDip'){
+    if(pot.glazedFrac<.12){ banner('dip it in the glaze first!', 1.4, true); return; }
+    startKiln('glaze');
+  }
+};
+
+/* ---------------- input ---------------- */
+let touching=false, lastX=0, lastY=0;
+const projV = new THREE.Vector3();
+function potScreenY(worldY){
+  projV.set(0,worldY,0).project(camera);
+  return (1-(projV.y+1)/2)*innerHeight;
+}
+renderer.domElement.addEventListener('pointerdown', e=>{
+  AudioEng.init(); AudioEng.resume();
+  touching=true; lastX=e.clientX; lastY=e.clientY;
+  if(G.state==='glazeDip') G._dipLayer=null;      // new dip session
+  if(G.state==='wedge'){
+    wedgeAnim=1;
+    if(pot.bubbles>0){
+      pot.bubbles--;
+      AudioEng.squish();
+      setStage(`${pot.clay.n} · air bubbles: ${pot.bubbles}`);
+      emitSplat(rnd(2,6), pot.r[5]+.4);
+      if(pot.bubbles===0){ banner('well wedged!', 1.2); setTimeout(toCenter, 500); }
+    }
+  }
+});
+addEventListener('pointerup', ()=>{ touching=false; });
+addEventListener('pointercancel', ()=>{ touching=false; });
+addEventListener('pointermove', e=>{
+  const dx = e.clientX-lastX, dy = e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY;
+  if(!touching) return;
+
+  if(G.state==='glazeDip'){
+    pot.y = clamp(pot.y - dy*.06, LIQ_Y-MAX_H-3, 14);
+    return;
+  }
+  if(G.state!=='throwing' || pot.collapsed) return;
+
+  const workability = .25 + .75*pot.moisture;
+  const yTop=potScreenY(pot.h), yBot=potScreenY(0);
+  const fr = clamp((yBot-e.clientY)/(yBot-yTop), 0, 1);
+  const i0 = Math.round(fr*(RINGS-1));
+  const onRight = e.clientX > innerWidth/2;
+  const scl = 340/Math.min(innerWidth,innerHeight)*.5 + .5;
+
+  if(fr > .55 && Math.abs(dy) > Math.abs(dx)*1.15){
+    const oldH=pot.h;
+    pot.h = clamp(pot.h - dy*.035*workability*scl, MIN_H, MAX_H);
+    if(pot.h!==oldH){
+      const f=oldH/pot.h;
+      for(let i=0;i<RINGS;i++){
+        pot.t[i]=clamp(pot.t[i]*f, .12, 3);
+        pot.shock[i]=Math.min(pot.shock[i]+Math.abs(pot.h-oldH)*.04*(1+(1-pot.moisture)*1.6), 1.3);
+      }
+      if(Math.random()<.3) AudioEng.squish();
+      if(Math.random()<.4) emitSplat(pot.h*.9, pot.r[RINGS-2]);
+    }
+  }
+  else if(Math.abs(dx)>0){
+    const out = dx * (onRight?1:-1);
+    const dr = out * .017 * workability * scl;
+    const dryFac = 1 + (1-pot.moisture)*1.8;
+    for(let i=0;i<RINGS;i++){
+      const w = Math.exp(-((i-i0)**2)/(2*2.4*2.4));
+      if(w<.02) continue;
+      const old=pot.r[i];
+      pot.r[i]=clamp(pot.r[i]+dr*w, .9, 11);
+      pot.t[i]=clamp(pot.t[i]*old/pot.r[i], .12, 3);
+      pot.shock[i]=Math.min(pot.shock[i]+Math.abs(dr*w)*1.3*dryFac, 1.3);
+    }
+    if(pot.moisture<.25 && Math.random()<Math.abs(dr)*.9){
+      pot.cracks++; AudioEng.crack(); banner('the clay is cracking!', 1.2, true);
+    }
+    if(Math.random()<.35) AudioEng.squish();
+    if(Math.random()<.5) emitSplat(fr*pot.h, pot.r[i0]+.2);
+  }
+});
+
+/* ---------------- resize / focus ---------------- */
+addEventListener('resize', ()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden && AudioEng.ctx) AudioEng.ctx.suspend(); else AudioEng.resume();
+});
+
+/* ---------------- main loop ---------------- */
+const MOIST_TAGS = [[.66,'WET','#7ec8ff'],[.55,'STIFFENING','#a8b8d0'],[.33,'LEATHER-HARD','#d0a86a'],[0,'BONE DRY','#e8ceaa']];
+let lastT = performance.now();
+let wasLeather = false;
+const tmpV = new THREE.Vector3();
+
+function tick(now){
+  requestAnimationFrame(tick);
+  const dt = Math.min((now-lastT)/1000, .05); lastT=now;
+  const inKiln = G.state==='bisque'||G.state==='glazefire';
+  const spinRate = inKiln? 0
+                 : (G.state==='center'||G.state==='throwing')? 2.6
+                 : G.state==='glazeDip'? 1.1 : .5;
+  spin += dt * spinRate;
+
+  if(bannerTimer>0){ bannerTimer-=dt; if(bannerTimer<=0) $('banner').style.opacity=0; }
+  if(hintTimer>0){ hintTimer-=dt; if(hintTimer<=0) $('hint').style.opacity=0; }
+  if(wedgeAnim>0) wedgeAnim=Math.max(0,wedgeAnim-dt*5);
+
+  /* centring */
+  if(G.state==='center'){
+    if(touching){
+      pot.offCenter = Math.max(.06, pot.offCenter - dt*.38);
+      if(Math.random()<.15) AudioEng.squish();
+    }
+    pot.wobAmp = pot.offCenter*.9;
+    setStage(pot.offCenter<=.06? 'centred!' : `off-centre: ${Math.round(pot.offCenter*100)}%`);
+    if(pot.offCenter<=.06 && !G._centered){
+      G._centered=true;
+      banner('CENTRED', 1.2); AudioEng.chime(1);
+      setTimeout(()=>{ G._centered=false; toThrowing(); }, 600);
+    }
+  }
+
+  /* throwing */
+  if(G.state==='throwing'){
+    if(!pot.collapsed){
+      pot.moisture = Math.max(0, pot.moisture - dt/95*diff().dry*pot.clay.dryRate);
+      clayMat.color.copy(pot.clay.wetC).lerp(pot.clay.dryC, 1-pot.moisture);
+      clayMat.clearcoat = .45*pot.moisture;
+      clayMat.roughness = lerp(.5,.85,1-pot.moisture);
+      const leather = pot.moisture<=.55;
+      if(leather!==wasLeather){ wasLeather=leather; updateButtons();
+        if(leather){ banner('leather-hard — you can trim & carve now', 1.8); showCarveChips(); }
+        else $('chipRow').style.display='none'; }
+      if(pot.moisture>.5 && Math.random()<dt*2.2) emitWisp();
+    }
+    const inst = pot.collapsed? 0 : computeInstability();
+    pot.instab = lerp(pot.instab, inst, 1-Math.exp(-dt*6));
+    pot.wobAmp = lerp(pot.wobAmp, clamp(pot.instab,0,1.4)*.85, 1-Math.exp(-dt*5));
+    for(let i=0;i<RINGS;i++) pot.shock[i]*=Math.exp(-dt*2.1);
+    AudioEng.warn(pot.instab);
+    if(!pot.collapsed){
+      if(pot.instab>.62 && bannerTimer<=0) banner('IT\'S WOBBLING — ease off!', .9, true);
+      if(pot.instab>1) pot.overT+=dt; else pot.overT=Math.max(0,pot.overT-dt*2);
+      if(pot.overT>.85 || pot.instab>1.55) startCollapse();
+    }
+    if(touching && !pot.collapsed){
+      for(let i=1;i<RINGS-1;i++)
+        pot.r[i] = pot.r[i]*.94 + (pot.r[i-1]+pot.r[i+1])*.03;
+    }
+
+    $('moistFill').style.width = (pot.moisture*100)+'%';
+    for(const [th,tag,col] of MOIST_TAGS){ if(pot.moisture>=th){ $('moistTag').textContent=tag; $('moistTag').style.color=col; break; } }
+    $('stabFill').style.width = clamp(pot.instab*72,3,100)+'%';
+    $('stabTag').textContent = pot.instab>.9?'!!':'';
+    const risk = bisqueRisks();
+    const rt = $('riskTag');
+    if(rt) rt.textContent = `bisque risk ${Math.round(risk.total*100)}% — ${risk.why}`;
+    $('fireBtn').classList.toggle('hot', risk.total>.35);
+    $('vignette').style.opacity = clamp((pot.instab-.6)*.9,0,.85);
+    camLookT.y = clamp(pot.h*.55,7,13);
+    if(G.form && G.form.key!=='free' && !pot.collapsed)
+      setStage(`sketch match ${Math.round(matchPct())}%`);
+  }
+  if(ghostMesh) ghostMesh.visible = G.state==='throwing' && !pot.collapsed;
+
+  /* dipping */
+  if(G.state==='glazeDip'){
+    if(!touching) pot.y = lerp(pot.y, 14, 1-Math.exp(-dt*4));
+    const submerged = clamp((LIQ_Y - pot.y)/pot.h, 0, 1);
+    if(submerged>0 && pot.activeGlaze){
+      // each dip session lays a fresh layer of the active glaze
+      if(!G._dipLayer){
+        if(pot.layers.length>=4) G._dipLayer = pot.layers[pot.layers.length-1];
+        else {
+          G._dipLayer = { n:pot.activeGlaze.n, f:pot.activeGlaze.f,
+            cC:new THREE.Color(pot.activeGlaze.c), frac:0, thk:0, waxed:false };
+          pot.layers.push(G._dipLayer);
+        }
+      }
+      if(submerged > G._dipLayer.frac){
+        G._dipLayer.frac = submerged;
+        pot.glazedFrac = Math.max(pot.glazedFrac, submerged);
+        repaintColors();
+      }
+      G._dipLayer.thk += dt*2;
+      pot.glazeThk += dt*2;
+      if(Math.random()<.1) AudioEng.slosh();
+      liquid.scale.setScalar(1+Math.sin(now*.01)*.01);
+    }
+    const cov=Math.round(pot.glazedFrac*100);
+    const coat = pot.glazeThk>5?'heavy!':pot.glazeThk>1.5?'good':'thin';
+    const nLayers = pot.layers.length;
+    setStage(`coverage ${cov}% · coat: ${coat}${nLayers>1? ` · ${nLayers} layers`:''}`);
+    const risk=glazeRisks();
+    const rt=$('riskTag');
+    if(rt) rt.textContent = `glaze risk ${Math.round(risk.total*100)}% — ${risk.why}`;
+    $('fireBtn').classList.toggle('hot', risk.total>.35);
+  }
+
+  /* kiln cinematic */
+  if(inKiln){
+    G.kilnT += dt;
+    const t = G.kilnT;
+    // pot travels to the kiln
+    if(t<=KT.travel){
+      const k = t/KT.travel;
+      potRoot.position.lerpVectors(new THREE.Vector3(0,0,0), POT_KILN, k*k*(3-2*k));
+      potRoot.position.y += Math.sin(k*Math.PI)*6;   // gentle arc, carried by unseen hands
+    } else potRoot.position.copy(POT_KILN);
+    // door
+    let doorK = 0;
+    if(t>KT.travel && t<=KT.doorShut) doorK = (t-KT.travel)/(KT.doorShut-KT.travel);
+    else if(t>KT.doorShut && t<=KT.heatEnd) doorK = 1;
+    else if(t>KT.heatEnd && t<=KT.doorOpen) doorK = 1-(t-KT.heatEnd)/(KT.doorOpen-KT.heatEnd);
+    kilnDoor.position.y = lerp(DOOR_OPEN_Y, DOOR_CLOSED_Y, doorK);
+    if(!G._doorSfx && doorK>=1){ G._doorSfx=true; AudioEng.thud(); }
+    // heat
+    const heatK = clamp((t-KT.doorShut)/(KT.heatEnd-KT.doorShut),0,1);
+    const heat = Math.sin(heatK*Math.PI);
+    clayMat.emissiveIntensity = heat*1.2;
+    kilnLight.intensity = heat*160 + (doorK<1? heat*60:0);
+    peephole.material.opacity = doorK*heat;
+    AudioEng.rumble(.4+heat*.6);
+    // kiln trembles at peak heat
+    kilnG.position.copy(KILN_POS);
+    if(heat>.6){ kilnG.position.x += rnd(-.06,.06)*heat; kilnG.position.z += rnd(-.06,.06)*heat; }
+    // reveal
+    if(t>KT.heatEnd && !G.kilnApplied){
+      G.kilnApplied=true;
+      burstSparks();
+      AudioEng.creak();
+      applyKilnOutcome();
+    }
+    if(t>=KT.done){
+      G._doorSfx=false;
+      AudioEng.rumble(0);
+      AudioEng.duckMusic(false);
+      $('vignette').style.opacity=0;
+      clayMat.emissiveIntensity=0; kilnLight.intensity=0;
+      kilnG.position.copy(KILN_POS);
+      if(G.kilnKind==='bisque' && G.kilnOutcome!=='shatter') toGlazeDip();
+      else { G.state='result'; showScreen('resultScreen'); }
+    }
+  }
+
+  if(pot.collapsed && pot.slump<1) pot.slump = Math.min(1, pot.slump+dt*1.6);
+
+  /* shards */
+  for(let s=shards.length-1;s>=0;s--){
+    const m=shards[s];
+    m.userData.life-=dt;
+    if(m.userData.life<=0){ scene.remove(m); m.material.dispose(); shards.splice(s,1); continue; }
+    m.userData.v.y -= 42*dt;
+    m.position.addScaledVector(m.userData.v, dt);
+    if(m.position.y<-2.9){ m.position.y=-2.9; m.userData.v.y*=-.3; m.userData.v.x*=.6; m.userData.v.z*=.6; }
+    m.rotation.x+=m.userData.w.x*dt; m.rotation.y+=m.userData.w.y*dt; m.rotation.z+=m.userData.w.z*dt;
+  }
+
+  /* particles */
+  {
+    const arr = splatGeo.attributes.position.array;
+    splats.forEach((sp,i)=>{
+      if(sp.life>0){
+        sp.life-=dt; sp.v.y-=30*dt; sp.p.addScaledVector(sp.v,dt);
+        if(sp.life<=0) sp.p.set(0,-99,0);
+      }
+      arr[i*3]=sp.p.x; arr[i*3+1]=sp.p.y; arr[i*3+2]=sp.p.z;
+    });
+    splatGeo.attributes.position.needsUpdate=true;
+  }
+  {
+    const arr = wispGeo.attributes.position.array;
+    wisps.forEach((w,i)=>{
+      if(w.life>0){ w.life-=dt; w.p.y+=dt*2.2; w.p.x+=dt*.4; if(w.life<=0) w.p.set(0,-99,0); }
+      arr[i*3]=w.p.x; arr[i*3+1]=w.p.y; arr[i*3+2]=w.p.z;
+    });
+    wispGeo.attributes.position.needsUpdate=true;
+  }
+  {
+    const arr = sparkGeo.attributes.position.array;
+    sparks.forEach((s,i)=>{
+      if(s.life>0){ s.life-=dt; s.v.y-=14*dt; s.p.addScaledVector(s.v,dt); if(s.life<=0) s.p.set(0,-99,0); }
+      arr[i*3]=s.p.x; arr[i*3+1]=s.p.y; arr[i*3+2]=s.p.z;
+    });
+    sparkGeo.attributes.position.needsUpdate=true;
+  }
+  {
+    const arr = moteGeo.attributes.position.array;
+    motes.forEach((m,i)=>{
+      m.p.addScaledVector(m.v, dt);
+      if(m.p.x>2||m.p.y<1) m.p.set(rnd(-34,-8), rnd(14,28), rnd(-36,-4));
+      arr[i*3]=m.p.x; arr[i*3+1]=m.p.y; arr[i*3+2]=m.p.z;
+    });
+    moteGeo.attributes.position.needsUpdate=true;
+  }
+
+  wheel.rotation.y = spin;
+
+  /* eased camera rig + sway + wobble shake */
+  const camEase = 1-Math.exp(-dt*2.8);
+  camPos.lerp(camPosT, camEase);
+  camLook.lerp(camLookT, camEase);
+  const swayOn = SET.sway!=='off';
+  const shake = pot.wobAmp*.12;
+  camera.position.set(
+    camPos.x + (swayOn? Math.sin(now*.0006)*.6:0) + rnd(-shake,shake),
+    camPos.y + (swayOn? Math.cos(now*.0004)*.4:0) + rnd(-shake,shake),
+    camPos.z);
+  camera.lookAt(tmpV.copy(camLook));
+
+  if(crackSprite.visible){
+    crackSprite.position.set(0, pot.y+pot.h*.5, (pot.r[Math.floor(RINGS/2)]||3)+.12);
+    crackSprite.lookAt(camera.position);
+  }
+
+  if(potMesh.visible) rebuildPot();
+  renderer.render(scene, camera);
+}
+
+/* ---------------- boot ---------------- */
+loadOrders();
+loadShelf();
+$('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
+showScreen('titleScreen');
+$('muteBtn').style.display='flex';
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

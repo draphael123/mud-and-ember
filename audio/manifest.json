@@ -1,0 +1,11 @@
+{
+  "music":   "music.wav",
+  "squish":  "squish.wav",
+  "scrape":  "scrape.wav",
+  "slosh":   "slosh.wav",
+  "creak":   "creak.wav",
+  "crack":   "crack.wav",
+  "shatter": "shatter.wav",
+  "thud":    "thud.wav",
+  "chime":   "chime.wav"
+}

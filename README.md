@@ -1,0 +1,53 @@
+# Mud & Ember — a pottery studio
+
+**A cozy, tense pottery game for mobile.** Wedge the air out of the clay, centre it
+on the wheel, throw a pot with your thumb — thin walls wobble and collapse, and the
+clay dries while you fuss — carve it, survive the bisque fire, dip it in layered
+glaze, then gamble everything on the glaze fire. Survivors go on your studio shelf,
+and they stay there.
+
+Single-file HTML5 game built with [Three.js](https://threejs.org/) (loaded from a
+CDN). No build step — open `index.html`.
+
+## Play
+
+- Pick a form (cup / bowl / vase / jug / amphora, or freeform) — a guide silhouette
+  appears on the wheel and your sketch match is scored. Optional **commissions** on
+  the noticeboard pay coins for delivering the right piece.
+- **Tap** to wedge · **press & hold** to centre · **drag ↔** to shape the wall ·
+  **drag ↑** near the rim to pull taller
+- At leather-hard: **trim** to even the walls, **carve** decoration (rings / wave /
+  chatter)
+- **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
+  **glaze fire**. Both firings roll real risk from your shortcuts: wet clay and air
+  bubbles burst, thin walls split, heavy glaze runs.
+- Three clay bodies (stoneware unlocks at 3 fired, porcelain at 8), a full brick-kiln
+  firing cinematic, photo mode with PNG export, and a persistent shelf.
+
+## Deploy
+
+Static site — Vercel serves `index.html` at the domain root (`outputDirectory: "."`).
+Pushes to `main` auto-deploy. No configuration needed beyond importing the repo.
+
+## Audio
+
+The game ships with real audio in `audio/`, loaded via `audio/manifest.json` (anything
+missing from the manifest falls back to the built-in WebAudio synthesizer, so the
+folder is optional):
+
+- **Music** — *"The River Studio"*, an original ~27-second seamless loop
+  (Karplus–Strong plucked strings over Am–F–C–G with Schroeder reverb), rendered
+  offline by `audio/render.js` (dependency-free; re-render with `node audio/render.js`).
+  CC0, as are the rendered `squish` and `shatter`.
+- **Foley** — `chime`, `crack`, `creak`, `scrape`, `slosh`, `thud` are trimmed from
+  the [Sonic Pi](https://github.com/sonic-pi-net/sonic-pi) sample library, which is
+  **CC0 / public domain** (originally from freesound.org — see the license note in
+  Sonic Pi's `etc/samples/README.md`).
+
+To swap any sound, replace its file (or point the manifest at a new one); `music`
+should be a seamless loop, everything else is a one-shot.
+
+## Credits & license
+
+Game code © the author. Three.js is MIT-licensed. All bundled audio is CC0 / public
+domain (see above), so the whole project is free to modify and redistribute.
