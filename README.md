@@ -24,8 +24,11 @@ CDN). No build step — open `index.html`.
   rim, warping, glaze colour-shift and drips — so no two pieces come out alike, even
   from the same shape and glaze. Each piece earns a **★ star rating** for craft.
 - **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
-  **glaze fire**. Both firings roll real risk from your shortcuts: wet clay and air
-  bubbles burst, thin walls split, heavy glaze runs.
+  **load the kiln** (fire in **oxidation** for bright true colour or **reduction** to
+  deepen and shift it; put it **on a stilt** so a running glaze can't weld to the
+  shelf) → **glaze fire**. Both firings roll real risk from your shortcuts: wet clay
+  and air bubbles burst, thin walls split, heavy glaze runs.
+- **Sign your work** with a maker's mark (Settings) — it's recorded on every piece.
 - Ten forms and eighteen glazes with real-ceramic finishing — a trimmed foot ring
   the pot stands on, glaze pooling and breaking rusty on the rims, gentle mottling,
   and reactive glazes: **celadon/sage craze** (hairline crackle), **tenmoku/rust

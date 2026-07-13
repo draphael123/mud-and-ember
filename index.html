@@ -278,8 +278,42 @@
           <button class="seg" data-v="off">OFF</button>
         </div>
       </div>
+      <div class="setRow">
+        <div class="setLbl">MAKER'S MARK</div>
+        <div class="segs" id="markSegs">
+          <button class="seg on" data-v="◈">◈</button>
+          <button class="seg" data-v="✿">✿</button>
+          <button class="seg" data-v="❖">❖</button>
+          <button class="seg" data-v="☘">☘</button>
+          <button class="seg" data-v="✦">✦</button>
+        </div>
+      </div>
     </div>
     <button class="btn bigBtn" id="setDone">DONE</button>
+  </div>
+
+  <div class="screen" id="kilnLoadScreen">
+    <h2>Load the kiln</h2>
+    <div class="tag">how you fire changes everything</div>
+    <div class="cardInner">
+      <div class="setRow">
+        <div class="setLbl">ATMOSPHERE</div>
+        <div class="segs" id="atmosSegs">
+          <button class="seg on" data-v="oxidation">OXIDATION</button>
+          <button class="seg" data-v="reduction">REDUCTION</button>
+        </div>
+        <div id="atmosHint" style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4"></div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl">KILN SHELF</div>
+        <div class="segs" id="stiltSegs">
+          <button class="seg on" data-v="stilt">ON A STILT</button>
+          <button class="seg" data-v="bare">BARE SHELF</button>
+        </div>
+        <div style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4">A stilt lifts the foot so a running glaze can't weld the piece to the shelf.</div>
+      </div>
+    </div>
+    <button class="btn bigBtn" id="kilnLoadFire">🔥 LOAD &amp; FIRE</button>
   </div>
 
   <div class="screen" id="planScreen">
@@ -377,7 +411,7 @@ const pick = arr => arr[Math.floor(Math.random()*arr.length)];
 
 /* ---------------- settings ---------------- */
 const SET = Object.assign(
-  { vol:.8, gfx:'high', diff:'classic', sway:'on' },
+  { vol:.8, gfx:'high', diff:'classic', sway:'on', atmos:'oxidation', stilt:'stilt', mark:'◈' },
   JSON.parse(localStorage.getItem('mudember_set')||'{}'));
 function saveSet(){ localStorage.setItem('mudember_set', JSON.stringify(SET)); }
 const DIFF = {
@@ -1182,6 +1216,8 @@ function pieceData(){
     seed:+(rnd(6.283)).toFixed(3),
     char:makeFiredChar(),
     stars:computeStars(),
+    mark:SET.mark,
+    atmos:G.atmosphere||'oxidation',
   };
 }
 function addToShelf(){
@@ -1671,7 +1707,7 @@ function guide(html){
   g.style.display='block'; g.innerHTML=html;
 }
 
-const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','cloudScreen','musicScreen'];
+const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','cloudScreen','musicScreen','kilnLoadScreen'];
 function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
 
 const STAGE_INFO = {
@@ -1838,6 +1874,13 @@ function bindSegs(id, key, cb){
 bindSegs('gfxSegs','gfx',applyGfx);
 bindSegs('diffSegs','diff');
 bindSegs('swaySegs','sway');
+bindSegs('markSegs','mark');
+const ATMOS_HINT = {
+  oxidation:'A clean, bright fire. Colours stay true and vivid. Safe.',
+  reduction:'Starved of oxygen — glazes deepen and shift (coppers redden, celadons cool). Richer, and a touch riskier.',
+};
+bindSegs('atmosSegs','atmos', ()=>{ $('atmosHint').textContent = ATMOS_HINT[SET.atmos]; });
+bindSegs('stiltSegs','stilt');
 $('volRange').value = SET.vol*100;
 $('volRange').addEventListener('input', ()=>{ SET.vol=$('volRange').value/100; saveSet(); AudioEng.setVol(); });
 $('volRange').addEventListener('change', ()=> AudioEng.blip(700,.1,'triangle',.1));
@@ -1962,6 +2005,7 @@ function startKiln(kind){
   AudioEng.duckMusic(true);
   setCam(-4,10,20, -20,7,-8);
   kilnLight.position.copy(KILN_POS).add(new THREE.Vector3(0,8,4));
+  kilnLight.color.set(kind==='glaze' && G.atmosphere==='reduction' ? 0xff3208 : 0xff5a10);  // reduction burns smokier
   $('vignette').style.opacity=1;
 }
 function applyKilnOutcome(){
@@ -2021,11 +2065,11 @@ function applyGlazeFire(){
   const risks=glazeRisks();
   const kind=classifyPiece();
   if(G.kilnOutcome==='shatter'){
-    const ran = risks.heavy>.1 && Math.random()<.6;
+    const ran = risks.heavy>.1 && !G.stilt && Math.random()<.6;   // a stilt saves a runny glaze
     if(ran){
       showResult('🫠 THE GLAZE RAN',
-        'The coat was too heavy. It melted down the walls and welded the piece to the kiln shelf. You chisel it free in three sad pieces.',
-        [['Piece','a '+kind],['Glaze', glazeNames()+' · heavy coat'],['Glaze fire','fused to the shelf'],['Shelf','unchanged']]);
+        'The coat was too heavy and you fired it on a bare shelf. It melted down and welded the piece to the kiln shelf. You chisel it free in three sad pieces.',
+        [['Piece','a '+kind],['Glaze', glazeNames()+' · heavy coat'],['Kiln shelf','no stilt — fused'],['Shelf','unchanged']]);
       potMesh.visible=false; baseCap.visible=false; crackSprite.visible=false;
       AudioEng.crack(); AudioEng.thud();
     } else {
@@ -2040,10 +2084,19 @@ function applyGlazeFire(){
   const cracked = G.kilnOutcome==='crack';
   const cov = Math.round(pot.glazedFrac*100);
   const coat = pot.glazeThk>5?'heavy':pot.glazeThk>1.5?'good':'thin';
-  // the kiln develops each layer's colour a little differently every time
+  // the kiln develops each layer's colour a little differently every time,
+  // and the firing atmosphere shifts it — oxidation stays bright, reduction deepens
+  const reduction = G.atmosphere==='reduction';
   pot.layers.forEach(l=>{
     l.cC.offsetHSL(rnd(-.02,.02), rnd(-.06,.06), rnd(-.03,.03));
     if(pot.clay.key==='porcelain') l.cC.offsetHSL(0,.04,.05);   // porcelain makes glazes sing
+    if(reduction){
+      const hsl={}; l.cC.getHSL(hsl);
+      const dh = (hsl.h>.25 && hsl.h<.5)? -.03 : (hsl.h<.06||hsl.h>.95)? -.012 : 0;  // greens cool, reds deepen
+      l.cC.offsetHSL(dh, .13, -.06);
+    } else {
+      l.cC.offsetHSL(0, -.03, .03);                              // oxidation: bright & clean
+    }
   });
   const fin=glazeFinish();
   clayMat.roughness = fin==='gloss'?.2:fin==='satin'?.45:.62;
@@ -2078,8 +2131,10 @@ function applyGlazeFire(){
     ['Bisque', pot.bisqueCracked?'hairline crack':'clean'],
     ['Glaze', glazeNames()+' · '+cov+'%'],
     ['Coat', coat],
+    ['Atmosphere', G.atmosphere==='reduction'?'reduction 🔥':'oxidation'],
     ['Walls', wallReport()],
-    ['Glaze fire', cracked?'cracked but standing':flawless?'flawless':'survived']];
+    ['Glaze fire', cracked?'cracked but standing':flawless?'flawless':'survived'],
+    ['Signed', SET.mark]];
   /* commission delivery */
   if(G.commission){
     const o=G.commission;
@@ -2154,7 +2209,7 @@ function enterDisplay(){
     potMesh.visible=false; baseCap.visible=false;
   }
   const d=G.lastPieceData||{};
-  const sub = `${d.kind||classifyPiece()} · ${d.glazeName||glazeNames()} · ${d.clayName||pot.clay.n}`;
+  const sub = `${d.kind||classifyPiece()} · ${d.glazeName||glazeNames()} · ${d.clayName||pot.clay.n}${d.mark?' · '+d.mark:''}`;
   const st = d.stars!=null? `<div style="color:#ffcf4a;letter-spacing:3px;font-size:18px;margin-top:4px">${starStr(d.stars)}</div>` : '';
   $('displayCard').innerHTML = `<div class="dTitle">${G.lastTitle||'Your piece'}</div><div class="dSub">${sub}</div>${st}`;
   framePiece();
@@ -2217,7 +2272,8 @@ function renderThumb(d){
 function pieceMeta(d){
   const g = d.glazeName || 'glazed';
   const c = d.clayName || 'earthenware';
-  return `${g} · ${c}`;
+  const m = d.mark? ` · ${d.mark}` : '';
+  return `${g} · ${c}${m}`;
 }
 function openGallery(from){
   G.galleryFrom = from||'title';
@@ -2440,9 +2496,16 @@ $('fireBtn').onclick = ()=>{
   if(G.state==='throwing') startKiln('bisque');
   else if(G.state==='glazeDip'){
     if(pot.glazedFrac<.12){ banner('dip it in the glaze first!', 1.4, true); return; }
-    startKiln('glaze');
+    openKilnLoad();
   }
 };
+function openKilnLoad(){
+  G.state='kilnLoad';
+  setPlayHUD(false); $('muteBtn').style.display='flex'; $('musicBtn').style.display='flex';
+  $('atmosHint').textContent = ATMOS_HINT[SET.atmos];
+  showScreen('kilnLoadScreen');
+}
+$('kilnLoadFire').onclick = ()=>{ G.atmosphere=SET.atmos; G.stilt=(SET.stilt==='stilt'); startKiln('glaze'); };
 
 /* ---------------- input ---------------- */
 let touching=false, lastX=0, lastY=0;
