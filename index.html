@@ -36,6 +36,17 @@
   #moistFill { background:linear-gradient(90deg,#7a4a2c,#3f8fd0,#7ec8ff); width:100%; }
   #stabFill  { background:linear-gradient(90deg,#3ad07a,#ffd24a,#ff5a3a); width:5%; }
 
+  /* pill selectors: glaze method (dip/pour/brush/spray) + attached parts + decoration */
+  #glazeMethods, #partRow { position:absolute; bottom:calc(158px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    display:none; gap:7px; pointer-events:none; }
+  #decoRow { position:absolute; bottom:calc(212px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    display:none; gap:6px; pointer-events:none; flex-wrap:wrap; justify-content:center; max-width:94vw; }
+  #glazeMethods .gm, #partRow .gm, #decoRow .gm { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:0;
+    border:1.5px solid rgba(190,120,80,.5); border-radius:11px; padding:4px 8px; font-size:10px; letter-spacing:.3px;
+    background:linear-gradient(180deg,rgba(44,27,22,.88),rgba(24,14,11,.92)); color:#ffe9c8; font-family:inherit; font-weight:bold; }
+  #glazeMethods .gm .ge, #partRow .gm .ge, #decoRow .gm .ge { font-size:15px; }
+  #glazeMethods .gm.on, #partRow .gm.on, #decoRow .gm.on { border-color:#ffd9a0; color:#ffd9a0; box-shadow:0 0 10px rgba(255,180,110,.4); transform:translateY(-1px); }
+
   /* selection chips (clay bodies at wedge, glazes at dip) */
   #chipRow { position:absolute; bottom:calc(104px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     display:none; gap:12px; }
@@ -59,6 +70,35 @@
   #fireBtn.hot { border-color:#ff6a4a; color:#ffb09a; }
   .btn .sub { display:block; font-size:10px; font-weight:normal; opacity:.85; margin-top:2px; }
   .btn[disabled] { opacity:.45; }
+
+  /* pro firing: schedule + pyrometric cones */
+  #fireCtl { position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:10px; right:10px;
+    display:none; flex-direction:column; align-items:center; gap:9px; pointer-events:none; }
+  #fireCtl .coneWrap { background:rgba(16,9,7,.62); border:1.5px solid rgba(190,120,80,.42);
+    border-radius:14px; padding:7px 12px 3px; }
+  #coneCanvas { display:block; width:240px; height:100px; }
+  #fireRead { font-size:12.5px; color:#ffd9a0; letter-spacing:.4px; text-align:center; min-height:17px;
+    text-shadow:0 1px 3px #000; transition:color .2s; }
+  #fireRead.ready { color:#9ee6a0; }
+  #fireRead.hot { color:#ff9a6a; }
+  #hwBar { position:relative; width:min(86%,320px); height:14px; border-radius:8px; background:rgba(0,0,0,.5);
+    border:1px solid rgba(255,255,255,.14); overflow:visible; }
+  #hwFill { position:absolute; left:0; top:0; height:100%; width:0%; border-radius:7px;
+    background:linear-gradient(90deg,#6a3b1e,#d8791f,#ffcf4a,#ff7a3a); transition:width .06s linear; }
+  #hwBar .mark { position:absolute; top:-3px; bottom:-3px; width:2px; }
+  #hwTarget { background:#7ec8ff; box-shadow:0 0 5px #7ec8ff; }
+  #hwGuard  { background:#ff5a3a; box-shadow:0 0 5px #ff5a3a; }
+  #hwBand { position:absolute; top:0; bottom:0; background:rgba(126,230,160,.22); }
+  #fireBtns { display:flex; gap:9px; width:min(94%,420px); }
+  #heatHold { flex:2; pointer-events:auto; border:2px solid #d07040; border-radius:13px; color:#ffe9c8;
+    font-weight:bold; background:linear-gradient(180deg,#8a3a1a,#5a1f0c); padding:15px 8px; font-size:15px;
+    letter-spacing:1px; font-family:inherit; box-shadow:0 4px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,210,160,.22);
+    touch-action:none; user-select:none; }
+  #heatHold.on { border-color:#ff8a4a; filter:brightness(1.4); transform:translateY(2px); }
+  #cutKiln { flex:1; pointer-events:auto; border:2px solid #6d8a9a; border-radius:13px; color:#dff;
+    font-weight:bold; background:linear-gradient(180deg,#26424e,#152a33); padding:15px 8px; font-size:14px;
+    letter-spacing:1px; font-family:inherit; box-shadow:0 4px 14px rgba(0,0,0,.5); }
+  #cutKiln:active { transform:translateY(2px); filter:brightness(1.2); }
 
   /* photo mode bar */
   #photoBar { position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:10px; right:10px; display:none; gap:9px; pointer-events:none; }
@@ -143,6 +183,8 @@
   .setRow { margin-top:16px; text-align:left; }
   .setRow .setLbl { font-size:11px; letter-spacing:2px; opacity:.85; margin-bottom:7px; }
   .segs { display:flex; gap:7px; }
+  .segs.wrapSegs { flex-wrap:wrap; }
+  .segs.wrapSegs .seg { flex:1 1 28%; font-size:11px; padding:8px 2px; }
   .seg { flex:1; pointer-events:auto; border:2px solid #6d4530; background:rgba(0,0,0,.3); color:#e8d4b8;
     border-radius:9px; padding:9px 4px; font-size:12px; font-weight:bold; font-family:inherit; letter-spacing:.5px; }
   .seg.on { background:linear-gradient(180deg,#7a4a2a,#5a3018); border-color:#d09050; color:#ffe9c8; }
@@ -197,12 +239,30 @@
     </div>
   </div>
 
+  <div id="decoRow"></div>
+  <div id="glazeMethods"></div>
+  <div id="partRow"></div>
   <div id="chipRow"></div>
 
   <div id="actions">
     <button class="btn" id="scrapBtn">SCRAP<span class="sub">fresh clay</span></button>
     <button class="btn" id="toolBtn">💧 SPONGE<span class="sub">re-wet · risky</span></button>
     <button class="btn" id="fireBtn">BISQUE FIRE 🔥<span class="risk" id="riskTag">kiln risk —</span></button>
+  </div>
+
+  <div id="fireCtl">
+    <div class="coneWrap"><canvas id="coneCanvas" width="240" height="100"></canvas></div>
+    <div id="fireRead">bring the cone down…</div>
+    <div id="hwBar">
+      <div id="hwBand"></div>
+      <div class="mark" id="hwTarget"></div>
+      <div class="mark" id="hwGuard"></div>
+      <div id="hwFill"></div>
+    </div>
+    <div id="fireBtns">
+      <button id="heatHold">🔥 HOLD TO HEAT</button>
+      <button id="cutKiln">CUT KILN</button>
+    </div>
   </div>
 
   <div id="photoBar">
@@ -297,10 +357,13 @@
     <div class="tag">how you fire changes everything</div>
     <div class="cardInner">
       <div class="setRow">
-        <div class="setLbl">ATMOSPHERE</div>
-        <div class="segs" id="atmosSegs">
+        <div class="setLbl">FIRING TYPE</div>
+        <div class="segs wrapSegs" id="atmosSegs">
           <button class="seg on" data-v="oxidation">OXIDATION</button>
           <button class="seg" data-v="reduction">REDUCTION</button>
+          <button class="seg" data-v="raku">RAKU</button>
+          <button class="seg" data-v="wood">WOOD</button>
+          <button class="seg" data-v="salt">SALT</button>
         </div>
         <div id="atmosHint" style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4"></div>
       </div>
@@ -311,6 +374,18 @@
           <button class="seg" data-v="bare">BARE SHELF</button>
         </div>
         <div style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4">A stilt lifts the foot so a running glaze can't weld the piece to the shelf.</div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl">COLD FINISHING</div>
+        <div class="segs" id="grindSegs">
+          <button class="seg on" data-v="asfired">AS-FIRED FOOT</button>
+          <button class="seg" data-v="ground">GRIND FOOT SMOOTH</button>
+        </div>
+        <div class="segs" id="lustreSegs" style="margin-top:7px">
+          <button class="seg on" data-v="none">NO LUSTRE</button>
+          <button class="seg" data-v="gold">✨ GOLD LUSTRE (3RD FIRE)</button>
+        </div>
+        <div style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4">Grinding smooths the foot ring after the fire. A gold-lustre firing is a third, low pass that gilds the rims — a small risk for a rich finish.</div>
       </div>
     </div>
     <button class="btn bigBtn" id="kilnLoadFire">🔥 LOAD &amp; FIRE</button>
@@ -411,7 +486,7 @@ const pick = arr => arr[Math.floor(Math.random()*arr.length)];
 
 /* ---------------- settings ---------------- */
 const SET = Object.assign(
-  { vol:.8, gfx:'high', diff:'classic', sway:'on', atmos:'oxidation', stilt:'stilt', mark:'◈' },
+  { vol:.8, gfx:'high', diff:'classic', sway:'on', atmos:'oxidation', stilt:'stilt', mark:'◈', grind:'asfired', lustre:'none' },
   JSON.parse(localStorage.getItem('mudember_set')||'{}'));
 function saveSet(){ localStorage.setItem('mudember_set', JSON.stringify(SET)); }
 const DIFF = {
@@ -1033,15 +1108,21 @@ function makePieceMesh(d){
   for(let pass=0;pass<3;pass++){ const tmp=Float32Array.from(R); for(let i=1;i<n-1;i++) R[i]=tmp[i]+(tmp[i-1]+tmp[i+1]-2*tmp[i])*.25; }
   const ch = d.char || {};                         // per-piece fired character (variety)
   const layers = (d.layers || (d.glaze? [{c:d.glaze, frac:d.frac||0}] : []))
-    .map(l=>{ const cC=new THREE.Color(l.c); if(ch.hs||ch.ls) cC.offsetHSL(ch.hs||0,0,ch.ls||0); return {cC, frac:l.frac, waxed:!!l.waxed, react:l.react||'none'}; });
+    .map(l=>{ const cC=new THREE.Color(l.c); if(ch.hs||ch.ls) cC.offsetHSL(ch.hs||0,0,ch.ls||0);
+      return {cC, frac:l.frac, waxed:!!l.waxed, react:l.react||'none', from:l.from||'bottom', bands:l.bands||null}; });
   const paint = new THREE.Color(), tmp = new THREE.Color();
+  const deco=d.deco, decoOn=!!(deco&&deco.motif&&deco.motif!=='none');
+  const decoPaint=new THREE.Color(decoOn?deco.color:0xffffff), dtmp=new THREE.Color();
   const speckly = d.finish==='speckle';
   const seed = (d.seed!=null? d.seed : (d.h*7.13)%6.283);
   const ovA = ch.ov!=null? ch.ov : .014, rimA = ch.rim!=null? ch.rim : .1;
   const leanX0 = (ch.lean||0)*Math.cos(ch.leanA||0), leanZ0 = (ch.lean||0)*Math.sin(ch.leanA||0);
   // reactive glaze character comes from the outermost layer
   const topReact = layers.length? layers[layers.length-1].react : 'none';
-  const craze = topReact==='craze', iron = topReact==='iron', streak = topReact==='streak';
+  // specialty firings: raku crackles + smokes bare clay, wood flashes amber on one side, salt orange-peels
+  const fireType=d.atmos||'oxidation', raku=fireType==='raku', wood=fireType==='wood', salt=fireType==='salt', lustre=!!d.lustre;
+  const craze = topReact==='craze' || raku, iron = topReact==='iron', streak = topReact==='streak';
+  const _smoke=new THREE.Color(0x1c1712), _amber=new THREE.Color(0xb5651d), _gold=new THREE.Color(0xd9b44a);
   const rbStart = iron? .74 : .9, rbAmt = iron? .8 : .5, breakC = iron? _breakIron : _break;
   const FOOT_H = clamp(d.h*.05+.4, .5, 1.1), floorY = FOOT_H+.4;
 
@@ -1056,13 +1137,14 @@ function makePieceMesh(d){
     const rr0=(R[i]+Math.sin(yn*70)*.012)*bulge;
     const rin0=Math.max(rr0-(d.t||1),.05), yIn=Math.max(yy,floorY);
     const leanX=leanX0*yn*d.h, leanZ=leanZ0*yn*d.h;                                        // slight kiln lean
-    let has=false, waxMax=0;
+    let has=false, prot=false;
     for(const L of layers){
-      if(yn > waxMax && yn <= L.frac+.001){
+      const cov = ringCovered(L, yn, .001);
+      if(cov && !prot){
         if(has){ tmp.copy(L.cC).lerp(paint,.35).multiplyScalar(.96); paint.copy(tmp); }
         else { paint.copy(L.cC); has=true; }
       }
-      if(L.waxed && L.frac>waxMax) waxMax=L.frac;
+      if(L.waxed && cov) prot=true;
     }
     const pool = 1 - (Math.sin(yn*70)<0? .05*-Math.sin(yn*70) : 0);
     const grav = 1 - clamp(.45-yn,0,.45)*.16;
@@ -1089,6 +1171,23 @@ function makePieceMesh(d){
       const glzO = has && yn >= .05;
       let cO = glzO? paint : bisqueC, sO = base*(glzO?pool*mott*spk*grav*st*dripMul:1);
       if(glzO && yn>rbStart){ const b=clamp((yn-rbStart)/(1-rbStart),0,1)*rbAmt; tmp.copy(paint).lerp(breakC,b); cO=tmp; sO*=1+b*(iron?-.12:.1); }
+      if(decoOn && yn>.05 && yn<.97){                       // painted decoration
+        const dm=decoMask(deco.motif, yn, j/radial);
+        if(dm>0){
+          if(deco.tech==='sgraffito'){ cO=bisqueC; sO*=.92; }
+          else if(deco.tech==='stamp'){ sO*=1-dm*.32; }
+          else { dtmp.copy(cO).lerp(decoPaint, deco.tech==='slip'?.85:.7); cO=dtmp; }
+        }
+      }
+      // specialty-firing surface character
+      if(raku){
+        if(!glzO){ dtmp.copy(_smoke).lerp(bisqueC,.18); cO=dtmp; sO*=.82; }                    // bare clay smokes black
+        else if(Math.sin(a*5+seed*3)*Math.sin(yn*8)>.72){ dtmp.copy(cO).lerp(_gold,.3); cO=dtmp; sO*=1.12; }  // metallic flash
+      } else if(wood){
+        const flash=clamp(Math.cos(a-seed)*.5+.5,0,1);
+        dtmp.copy(cO).lerp(_amber, flash*(glzO?.22:.42)); cO=dtmp; sO*=1-flash*.10+.05;         // ash-flash one flank
+      } else if(salt){ sO*= .9 + (Math.sin(vseed*11.3)*.5+.5)*.2; }                             // orange-peel
+      if(lustre && yn>.88){ const b=clamp((yn-.88)/.12,0,1); dtmp.copy(cO).lerp(_gold,b*.8); cO=dtmp; sO*=1+b*.25; }  // gilded rim
       let o=(i*radial+j)*3, u=(i*radial+j)*2;
       pos[o]=ca*rOut+leanX; pos[o+1]=yv; pos[o+2]=sa*rOut+leanZ;
       col[o]=cO.r*sO; col[o+1]=cO.g*sO; col[o+2]=cO.b*sO;
@@ -1138,8 +1237,20 @@ function makePieceMesh(d){
     clearcoat: craze?.85 : fin==='gloss'?.7:fin==='satin'?.3:.1, clearcoatRoughness:.3,
   });
   if(craze) mat.map = crackleTex;           // hairline craze network
-  return new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.userData.piece = true;
+  if(d.parts && (d.parts.handle||d.parts.spout||d.parts.lid)){
+    const sh={ h:d.h, y0:FOOT_H, topR:R[n-1], rAt:(yn)=>R[clamp(Math.round(yn*(n-1)),0,n-1)] };
+    const pcol = layers.length? layers[layers.length-1].cC.clone() : bisqueC.clone();
+    const pmat = new THREE.MeshPhysicalMaterial({ color:pcol, roughness:mat.roughness, clearcoat:mat.clearcoat,
+      clearcoatRoughness:.3, envMapIntensity:.42 });
+    buildParts(mesh, sh, pmat, d.parts);
+    mesh.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  }
+  return mesh;
 }
+/* dispose a finished-piece mesh AND its attached-part children */
+function disposePiece(m){ if(!m) return; m.traverse(o=>{ if(o.isMesh){ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); } }); }
 function layoutShelf(){
   shelfPieces.forEach((p,i)=>{
     if(i>=SHELF_SLOTS.length){ scene.remove(p.mesh); return; }
@@ -1151,7 +1262,7 @@ function layoutShelf(){
   });
   while(shelfPieces.length > SHELF_SLOTS.length){
     const old = shelfPieces.pop();
-    scene.remove(old.mesh); old.mesh.geometry.dispose(); old.mesh.material.dispose();
+    scene.remove(old.mesh); disposePiece(old.mesh);
   }
   $('shelfCount').textContent = `${shelfPieces.length} · ${G.coins}c`;
 }
@@ -1191,9 +1302,15 @@ function computeStars(){
   if(pot.glazeThk>1.5 && pot.glazeThk<5.5) s += .4;
   if(pot.layers.length>=2) s += .3;                    // multi-glaze artistry
   if(pot.carve && pot.carve!=='none') s += .2;
+  if(pot.deco && pot.deco.motif!=='none') s += .25;      // decoration is craft too
+  if(G.lustre) s += .4;                                   // a lustre pass is a rich, deliberate finish
+  if(G.grind)  s += .2;                                   // a ground foot is proper craft
   if(G._fireCracked) s -= .8;
   if(pot.bisqueCracked) s -= .5;
   if(G._fireFlawless) s += .6;
+  if(G._fireQuality==='perfect') s += .5;        // fired to the cone
+  else if(G._fireQuality==='under') s -= .7;      // dull, immature glaze
+  else if(G._fireQuality==='over') s -= .4;        // ran hot, warped
   return clamp(Math.round(s*2)/2, .5, 5);
 }
 function starStr(n){
@@ -1206,9 +1323,12 @@ function pieceData(){
     h:+pot.h.toFixed(2),
     r:Array.from(pot.r).map(v=>+v.toFixed(2)),
     t:+mean.toFixed(2),
-    layers:pot.layers.map(l=>({c:'#'+l.cC.getHexString(), frac:+l.frac.toFixed(2), waxed:!!l.waxed, react:l.react||'none'})),
+    layers:pot.layers.map(l=>({c:'#'+l.cC.getHexString(), frac:+l.frac.toFixed(2), waxed:!!l.waxed, react:l.react||'none',
+      from:l.from||'bottom', mode:l.mode||'dip', bands:l.bands? l.bands.map(b=>[+b[0].toFixed(3),+b[1].toFixed(3)]):undefined})),
     bisque:'#'+pot.clay.bisqueC.getHexString(),
     carve:pot.carve,
+    parts:{handle:pot.parts.handle>0?1:0, spout:pot.parts.spout>0?1:0, lid:pot.parts.lid>0?1:0},
+    deco:{motif:pot.deco.motif, tech:pot.deco.tech, color:pot.deco.color},
     finish:glazeFinish(),
     kind:classifyPiece(),
     glazeName:glazeNames(),
@@ -1218,6 +1338,7 @@ function pieceData(){
     stars:computeStars(),
     mark:SET.mark,
     atmos:G.atmosphere||'oxidation',
+    lustre:!!G.lustre, grind:!!G.grind,
   };
 }
 function addToShelf(){
@@ -1278,9 +1399,31 @@ function glazeFinish(){ return pot.layers.length? pot.layers[pot.layers.length-1
 const GLAZE_FOOT = .05;                         // bottom of the outside is wiped bare
 const _break = new THREE.Color(0xcaa47a);       // rusty tone where glaze runs thin on rims
 const _breakIron = new THREE.Color(0x6e4222);   // darker iron-rust break for tenmoku/rust glazes
+/* glaze coverage — one model for four application methods:
+   dip fills bottom-up (L.frac), pour coats top-down (from:'top'), spray mists
+   the whole piece (from:'full'), brush paints partial bands (L.bands). */
+function ringCovered(L, yn, jit){
+  jit=jit||0;
+  if(L.bands){ for(const b of L.bands){ if(yn>=b[0]-jit && yn<=b[1]+jit) return true; } return false; }
+  if(L.from==='full') return true;
+  if(L.from==='top')  return yn >= (1-L.frac)-jit;
+  return yn <= L.frac + jit;                       // bottom / dip
+}
+function coverageTop(L){
+  if(L.bands){ let m=0; for(const b of L.bands) if(b[1]>m) m=b[1]; return m; }
+  return (L.from==='top'||L.from==='full')? 1 : L.frac;
+}
+function recomputeCoverage(){
+  let n=0, tot=0;
+  for(let i=0;i<RINGS;i++){ const yn=i/(RINGS-1); if(yn<GLAZE_FOOT) continue; tot++;
+    if(pot.layers.some(L=>ringCovered(L,yn,0))) n++; }
+  pot.glazedFrac = tot? n/tot : 0;
+}
 function repaintColors(){
   const col = potGeo.attributes.color.array;
   const speckly = glazeFinish()==='speckle';
+  const decoOn = pot.deco && pot.deco.motif!=='none';
+  if(decoOn) _decoPaint.set(pot.deco.color);
   for(let k=0;k<ROWS;k++){
     const outer = k<RINGS;
     const ring = ringOfRow(k);
@@ -1290,16 +1433,20 @@ function repaintColors(){
     for(let j=0;j<RADIAL;j++){
       const v=k*RADIAL+j;
       let s=speckle[v];
-      if(!pot.bisqued){ col[v*3]=s; col[v*3+1]=s; col[v*3+2]=s; continue; }
-      let has=false, waxMax=0, topB=0;
+      if(!pot.bisqued){
+        if(decoOn && outer){ const dm=decoMask(pot.deco.motif, yn, j/RADIAL);
+          if(dm>0 && yn>GLAZE_FOOT && yn<.97) s*= (pot.deco.tech==='sgraffito'||pot.deco.tech==='stamp')?.72:.82; }  // pattern shows on the raw clay; colour comes with the fire
+        col[v*3]=s; col[v*3+1]=s; col[v*3+2]=s; continue;
+      }
+      let has=false, prot=false, topB=0;
       for(const L of pot.layers){
-        const bound = L.frac + edgeJit[j];
-        if(yn > waxMax && yn <= bound){
+        const cov = ringCovered(L, yn, edgeJit[j]);
+        if(cov && !prot){
           if(has){ _paintB.copy(L.cC).lerp(_paintA,.35).multiplyScalar(.96); _paintA.copy(_paintB); }
           else { _paintA.copy(L.cC); has=true; }
-          if(bound>topB) topB=bound;
+          const ct=coverageTop(L); if(ct>topB) topB=ct;
         }
-        if(L.waxed && L.frac>waxMax) waxMax=L.frac;
+        if(L.waxed && cov) prot=true;   // wax on a layer shields that spot from later coats
       }
       if(has && outer && yn < GLAZE_FOOT) has=false;      // bare clay foot ring
       let c = has? _paintA : pot.clay.bisqueC;
@@ -1313,10 +1460,20 @@ function repaintColors(){
           _paintB.copy(_paintA).lerp(_break,b); c=_paintB; s*=1+b*.1;
         }
       }
+      if(decoOn && outer){                                 // painted decoration over the surface
+        const dm=decoMask(pot.deco.motif, yn, j/RADIAL);
+        if(dm>0 && yn>GLAZE_FOOT && yn<.97){
+          const t=pot.deco.tech;
+          if(t==='sgraffito'){ _decoC.copy(pot.clay.bisqueC); c=_decoC; s*=.92; }        // scratched back to bare clay
+          else if(t==='stamp'){ s*=1-dm*.32; }                                            // impressed — catches glaze darker
+          else { _decoC.copy(c).lerp(_decoPaint, t==='slip'?.85:.7); c=_decoC; }          // underglaze / slip painted mark
+        }
+      }
       col[v*3]=c.r*s; col[v*3+1]=c.g*s; col[v*3+2]=c.b*s;
     }
   }
   potGeo.attributes.color.needsUpdate = true;
+  if(hasParts()) updatePartMat();
 }
 
 /* potRoot carries the pot to the kiln and back */
@@ -1417,8 +1574,10 @@ const pot = {
   clay:CLAYS[0],
   bisqued:false, bisqueCracked:false,
   carve:'none',
-  layers:[],                                  // glaze dips, in order: {c,n,f,frac,thk,waxed}
-  activeGlaze:null, glazedFrac:0, glazeThk:0,
+  layers:[],                                  // glaze coats, in order: {n,f,cC,frac,thk,waxed,from,bands,mode}
+  activeGlaze:null, glazedFrac:0, glazeThk:0, glazeMethod:'dip',
+  parts:{handle:0, spout:0, lid:0},           // attached parts → join quality (0 = none)
+  deco:{motif:'none', tech:'underglaze', color:0xf3ece0},   // painted decoration
   y:0,
 };
 window.pot = pot;
@@ -1435,7 +1594,10 @@ function newLump(){
   pot.bubbles = 4+Math.floor(rnd(3)); pot.offCenter=1;
   pot.bisqued=false; pot.bisqueCracked=false;
   pot.carve='none';
-  pot.layers=[]; pot.activeGlaze=null; pot.glazedFrac=0; pot.glazeThk=0; pot.y=0;
+  pot.layers=[]; pot.activeGlaze=null; pot.glazedFrac=0; pot.glazeThk=0; pot.glazeMethod='dip'; pot.y=0;
+  pot.parts={handle:0, spout:0, lid:0};
+  pot.deco={motif:'none', tech:'underglaze', color:DECO_COLORS[0]};
+  if(typeof rebuildLiveParts==='function') rebuildLiveParts();
   potRoot.position.set(0,0,0);
   rollDrips();
   clayMat.color.copy(pot.clay.wetC); clayMat.roughness=.5; clayMat.clearcoat=.45; clayMat.emissiveIntensity=0;
@@ -1546,6 +1708,114 @@ function carveOffset(carve, yn, jn){
   return 0;
 }
 
+/* ---------------- painted decoration (underglaze / slip / sgraffito / stamp) ---------------- */
+const DECO_MOTIFS = [
+  {key:'none',    n:'None',    sym:'✖'},
+  {key:'dots',    n:'Dots',    sym:'⣿'},
+  {key:'dashes',  n:'Dashes',  sym:'┅'},
+  {key:'bands',   n:'Bands',   sym:'≡'},
+  {key:'wave',    n:'Wave',    sym:'〰'},
+  {key:'chevron', n:'Chevron', sym:'⋀'},
+  {key:'vine',    n:'Vine',    sym:'❦'},
+  {key:'hatch',   n:'Hatch',   sym:'▦'},
+];
+const DECO_TECHS = [
+  {key:'underglaze', n:'Underglaze', sym:'🖌️'},
+  {key:'slip',       n:'Slip',       sym:'🌀'},
+  {key:'sgraffito',  n:'Sgraffito',  sym:'✎'},
+  {key:'stamp',      n:'Stamp',      sym:'◈'},
+];
+const DECO_COLORS = [0xf3ece0, 0x2a2420, 0x2a4a8a, 0x9a3a24, 0x4a6a3a, 0x243a8a, 0xc98a2e, 0x7a2a54];
+const _frac = x => x - Math.floor(x);
+/* motif coverage 0..1 at (height yn, around jn). integer frequencies keep the seam continuous. */
+function decoMask(motif, yn, jn){
+  switch(motif){
+    case 'dots':    { const fx=_frac(jn*8), fy=_frac(yn*7); return Math.hypot(fx-.5,fy-.5)<.22?1:0; }
+    case 'dashes':  { const fx=_frac(jn*11); return (Math.abs(_frac(yn*6)-.5)<.16 && fx<.62)?1:0; }
+    case 'bands':   return Math.abs(_frac(yn*7)-.5)<.20?1:0;
+    case 'wave':    { const y=_frac(yn*3), w=.5+.30*Math.sin(jn*Math.PI*2*4); return Math.abs(y-w)<.10?1:0; }
+    case 'chevron': { const y=_frac(yn*4), z=Math.abs(_frac(jn*6)-.5)*2; return Math.abs(y-z)<.12?1:0; }
+    case 'vine':    { const y=_frac(yn*2.5), w=.5+.32*Math.sin(jn*Math.PI*2*3);
+                      const line=Math.abs(y-w)<.05, leaf=(Math.hypot(_frac(jn*6)-.5,(y-w))<.13 && Math.sin(jn*Math.PI*2*6)>.4);
+                      return (line||leaf)?1:0; }
+    case 'hatch':   { const a=_frac(jn*8+yn*8), b=_frac(jn*8-yn*8); return (Math.abs(a-.5)<.12||Math.abs(b-.5)<.12)?1:0; }
+  }
+  return 0;
+}
+const _decoPaint = new THREE.Color(), _decoC = new THREE.Color();
+
+/* ---------------- attached parts: handles, spouts, lids ---------------- */
+const PART_KINDS = [
+  {key:'handle', e:'🫙', n:'Handle', hint:'a strap on the side — a cup becomes a mug'},
+  {key:'spout',  e:'🫗', n:'Spout',  hint:'a pulled lip — a jug becomes a pitcher or teapot'},
+  {key:'lid',    e:'🎩', n:'Lid',    hint:'a capped top — jars and teapots'},
+];
+const partMat = new THREE.MeshPhysicalMaterial({ color:0xcdaa88, roughness:.6, clearcoat:.2, clearcoatRoughness:.35, envMapIntensity:.42 });
+const livePartsGroup = new THREE.Group(); potRoot.add(livePartsGroup);
+// a "shape" abstracts the pot silhouette so the live pot and finished pieces build the same parts.
+function liveShape(){
+  return { h:pot.h, y0:0, topR:pot.r[RINGS-2],
+           rAt:(yn)=>pot.r[clamp(Math.round(yn*(RINGS-1)),0,RINGS-1)] };
+}
+function makeHandleGeo(sh){
+  const bow=Math.max(sh.rAt(0.53)*0.7, 1.6);
+  const curve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(sh.rAt(0.72)*0.96, 0.72*sh.h+sh.y0, 0),
+    new THREE.Vector3(sh.rAt(0.60)+bow,  0.60*sh.h+sh.y0, 0),
+    new THREE.Vector3(sh.rAt(0.46)+bow,  0.46*sh.h+sh.y0, 0),
+    new THREE.Vector3(sh.rAt(0.34)*0.96, 0.34*sh.h+sh.y0, 0),
+  ]);
+  return new THREE.TubeGeometry(curve, 28, Math.max(sh.rAt(0.5)*0.10,0.30), 8, false);
+}
+function makeSpoutGeo(sh){
+  const rT=sh.rAt(0.92);
+  const curve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(rT*0.5,  0.86*sh.h+sh.y0, 0),
+    new THREE.Vector3(rT*0.95, 0.96*sh.h+sh.y0, 0),
+    new THREE.Vector3(rT+1.7,  1.02*sh.h+sh.y0, 0),
+  ]);
+  return new THREE.TubeGeometry(curve, 18, 0.5, 8, false);
+}
+function makeLidCapGeo(sh){
+  const rT=(sh.topR!=null?sh.topR:sh.rAt(1))*1.06;
+  const g=new THREE.SphereGeometry(Math.max(rT,.6), 22, 8, 0, Math.PI*2, 0, Math.PI*0.42);
+  g.translate(0, 1.0*sh.h+sh.y0, 0); return g;
+}
+function makeLidKnobGeo(sh){
+  const rT=(sh.topR!=null?sh.topR:sh.rAt(1));
+  const g=new THREE.SphereGeometry(Math.max(rT*0.22,0.4), 12, 10);
+  g.translate(0, 1.0*sh.h+sh.y0 + Math.max(rT,.6)*0.42, 0); return g;
+}
+function buildParts(target, sh, mat, parts){
+  if(!parts) return;
+  if(parts.handle>0) target.add(new THREE.Mesh(makeHandleGeo(sh), mat));
+  if(parts.spout>0){ const m=new THREE.Mesh(makeSpoutGeo(sh), mat); m.rotation.y=Math.PI; target.add(m); }  // spout opposite the handle
+  if(parts.lid>0){ target.add(new THREE.Mesh(makeLidCapGeo(sh), mat)); target.add(new THREE.Mesh(makeLidKnobGeo(sh), mat)); }
+}
+function clearGroup(g){ for(let i=g.children.length-1;i>=0;i--){ const c=g.children[i]; g.remove(c); if(c.geometry) c.geometry.dispose(); } }
+function updatePartMat(){
+  if(!pot.bisqued){ partMat.color.copy(clayMat.color); partMat.roughness=.6; partMat.clearcoat=.2; }
+  else if(!pot.layers.length){ partMat.color.copy(pot.clay.bisqueC); partMat.roughness=.85; partMat.clearcoat=0; }
+  else { partMat.color.copy(pot.layers[pot.layers.length-1].cC); partMat.roughness=clayMat.roughness; partMat.clearcoat=clayMat.clearcoat; }
+}
+function rebuildLiveParts(){ clearGroup(livePartsGroup); buildParts(livePartsGroup, liveShape(), partMat, pot.parts); updatePartMat(); }
+function hasParts(){ const p=pot.parts; return !!(p && (p.handle>0||p.spout>0||p.lid>0)); }
+function joinQuality(){ return clamp(1 - Math.abs(pot.moisture-0.42)/0.42, .3, 1); }   // leather-hard is the sweet spot
+function partJoinRisk(){ const p=pot.parts; if(!p) return 0; let r=0;
+  ['handle','spout','lid'].forEach(k=>{ if(p[k]>0) r += (1-p[k])*0.14; }); return Math.min(r,.3); }
+function partsUsedLabel(){ const p=pot.parts; const out=[];
+  ['handle','spout','lid'].forEach(k=>{ if(p&&p[k]>0) out.push(k); }); return out.join(' + ')||'—'; }
+/* a bad join can let a part crack off in the fire */
+function rollPartFailures(){
+  const p=pot.parts; if(!p) return [];
+  const failed=[];
+  ['handle','spout','lid'].forEach(k=>{
+    if(p[k]>0 && Math.random() < (1-p[k])*0.45*diff().risk){ failed.push(k); p[k]=0; }
+  });
+  if(failed.length) rebuildLiveParts();
+  return failed;
+}
+
 /* ---------------- forms you can set out to make ---------------- */
 const FORMS = [
   {key:'free',   n:'Freeform', e:'✨', d:'no guide — just you & the clay'},
@@ -1611,10 +1881,22 @@ function classifyPiece(){
   let rMax=0;
   for(let i=0;i<RINGS;i++) if(pot.r[i]>rMax) rMax=pot.r[i];
   const rTop = pot.r[RINGS-2], h = pot.h;
-  if(h<=8.5) return rMax > h*.62 ? 'bowl' : 'cup';
-  if(rTop < rMax*.55) return h>16 ? 'amphora' : 'vase';
-  if(rTop > rMax*.85) return h>14 ? 'umbrella stand' : 'tumbler';
-  return h>15 ? 'tall jug' : 'jug';
+  let base;
+  if(h<=8.5) base = rMax > h*.62 ? 'bowl' : 'cup';
+  else if(rTop < rMax*.55) base = h>16 ? 'amphora' : 'vase';
+  else if(rTop > rMax*.85) base = h>14 ? 'umbrella stand' : 'tumbler';
+  else base = h>15 ? 'tall jug' : 'jug';
+  return classWithParts(base);
+}
+function classWithParts(base){
+  const p=pot.parts||{}; const h=p.handle>0, s=p.spout>0, l=p.lid>0;
+  if(h && s) return l? 'teapot' : 'teapot';                 // handle + spout = teapot
+  if(s && l) return 'lidded pitcher';
+  if(s)      return base==='cup'||base==='bowl'? 'creamer' : 'pitcher';
+  if(h && l) return 'lidded mug';
+  if(h)      return base==='cup'? 'mug' : base==='bowl'? 'soup mug' : base==='vase'||base==='amphora'? base+' with handle' : base;
+  if(l)      return base==='vase'||base==='jug'||base==='tall jug'? 'lidded jar' : 'lidded '+base;
+  return base;
 }
 function wallVariance(){
   let mean=0; for(let i=0;i<RINGS;i++) mean+=pot.t[i]; mean/=RINGS;
@@ -1630,6 +1912,7 @@ function wallReport(){
 const G = {
   state:'title', prevState:'title',
   kilnT:0, kilnKind:'bisque', kilnOutcome:null, kilnApplied:false,
+  atmosphere:'oxidation', stilt:true, grind:false, lustre:false,
   fired: +(localStorage.getItem('mudember_fired')||0),
   coins: +(localStorage.getItem('mudember_coins')||0),
   commission:null,
@@ -1662,6 +1945,9 @@ function coinHUD(){ $('shelfCount').textContent = `${shelfPieces.length} · ${G.
 /* kiln cinematic timeline (seconds) */
 const KT = { travel:1.1, doorShut:1.8, heatEnd:5.2, doorOpen:5.9, done:7.0 };
 
+const FIRE_TYPE_LABEL = { oxidation:'oxidation', reduction:'reduction 🔥', raku:'raku 🖤', wood:'wood-ash 🌿', salt:'salt-glaze 🧂' };
+const FIRE_TYPE_RISK  = { oxidation:0, reduction:.04, raku:.16, wood:.09, salt:.07 };   // specialty fires bite harder
+
 /* ---------------- kiln risk models ---------------- */
 function thinFrac(){ let n=0; for(let i=0;i<RINGS;i++) if(pot.t[i]<.28) n++; return Math.min(n*.045,.4); }
 function bisqueRisks(){
@@ -1671,11 +1957,12 @@ function bisqueRisks(){
   const cracks = Math.min(pot.cracks*.06,.3);
   const thin = thinFrac()*.35;
   const blob = pot.collapsed?.1:0;
-  const total = clamp((steam+bubbles+cracks+thin+blob)*diff().risk, .02, .93);
+  const join = partJoinRisk();
+  const total = clamp((steam+bubbles+cracks+thin+blob+join)*diff().risk, .02, .93);
   let why='looking safe';
-  const worst = Math.max(steam,bubbles,cracks,thin);
+  const worst = Math.max(steam,bubbles,cracks,thin,join);
   if(worst>.07) why = worst===steam?'still too wet!' : worst===bubbles?'air bubbles — wedge next time'
-                    : worst===cracks?'cracked clay' : 'walls very thin';
+                    : worst===join?'a weak join may crack' : worst===cracks?'cracked clay' : 'walls very thin';
   return { total, steam, why };
 }
 function glazeRisks(){
@@ -1684,11 +1971,12 @@ function glazeRisks(){
   const cracks = Math.min(pot.cracks*.035,.2);
   const heavy = clamp((pot.glazeThk-5)*.06,0,.28);
   const carved = pot.carve!=='none'? .02:0;   // carving thins the wall a touch
-  const total = clamp((thin+uneven+cracks+heavy+carved+.02)*diff().risk, .02, .9);
+  const join = partJoinRisk()*.7;             // a bad join survived bisque but can still let go
+  const total = clamp((thin+uneven+cracks+heavy+carved+join+.02)*diff().risk, .02, .9);
   let why='looking safe';
-  const worst = Math.max(thin,uneven,cracks,heavy);
+  const worst = Math.max(thin,uneven,cracks,heavy,join);
   if(worst>.07) why = worst===heavy?'heavy glaze may run' : worst===thin?'walls very thin'
-                    : worst===cracks?'old cracks' : 'uneven walls';
+                    : worst===join?'a weak join may crack' : worst===cracks?'old cracks' : 'uneven walls';
   return { total, heavy, why };
 }
 
@@ -1734,7 +2022,8 @@ function setPlayHUD(on){
   $('photoBar').style.display='none';
   $('displayBar').style.display='none'; $('displayCard').style.display='none';
   if(!on){ $('stageBox').style.display='none'; $('meters').style.display='none';
-           $('chipRow').style.display='none'; guide(null); }
+           $('chipRow').style.display='none'; $('glazeMethods').style.display='none';
+           $('partRow').style.display='none'; $('decoRow').style.display='none'; guide(null); }
 }
 function updateButtons(){
   const s=G.state;
@@ -1812,6 +2101,63 @@ function showGlazeChips(){
   }
   setGlazeColor(opts[0]);
 }
+/* ---- glaze application methods: dip / pour / brush / spray ---- */
+const GLAZE_METHODS = [
+  {key:'dip',   e:'🫗', n:'DIP',   hint:'<b>DRAG ↓</b> to lower the pot into the tub — an even coat, bottom-up to the glaze line.'},
+  {key:'pour',  e:'🌊', n:'POUR',  hint:'<b>HOLD</b> over the pot to pour glaze over the rim — it coats top-down with runs and drips.'},
+  {key:'brush', e:'🖌️', n:'BRUSH', hint:'<b>DRAG</b> up and down the wall to brush partial bands — paint exactly where you want.'},
+  {key:'spray', e:'💨', n:'SPRAY', hint:'<b>HOLD</b> to mist the whole pot — thin, soft and even. A few passes build depth.'},
+];
+function showGlazeMethods(){
+  const row=$('glazeMethods'); row.innerHTML=''; row.style.display='flex';
+  GLAZE_METHODS.forEach(m=>{
+    const b=document.createElement('button'); b.className='gm'+(m.key===pot.glazeMethod?' on':'');
+    b.innerHTML=`<span class="ge">${m.e}</span>${m.n}`;
+    b.onclick=()=>setGlazeMethod(m.key);
+    row.appendChild(b);
+  });
+}
+function setGlazeMethod(key){
+  pot.glazeMethod=key; G._dipLayer=null;                      // switching starts a fresh coat session
+  $('glazeMethods').querySelectorAll('.gm').forEach((el,i)=>el.classList.toggle('on', GLAZE_METHODS[i].key===key));
+  const m=GLAZE_METHODS.find(x=>x.key===key);
+  guide(m.hint);
+  AudioEng.blip(520,.09,'triangle',.08);
+  if(key==='dip'){ tub.visible=true; }
+  else { tub.visible=true; pot.y=14; }                        // non-dip methods work at display height
+}
+/* a "coat session" is one continuous application; each press starts a new one
+   (a new layer), reusing the top layer once the 4-coat cap is hit. */
+function ensureSessionLayer(mode){
+  if(!pot.activeGlaze) return null;
+  if(G._dipLayer) return G._dipLayer;
+  if(pot.layers.length>=4){ G._dipLayer=pot.layers[pot.layers.length-1]; return G._dipLayer; }
+  const from = mode==='pour'?'top' : mode==='spray'?'full' : 'bottom';
+  const L={ n:pot.activeGlaze.n, f:pot.activeGlaze.f, react:pot.activeGlaze.react||'none',
+            cC:new THREE.Color(pot.activeGlaze.c), frac:0, thk:0, waxed:false,
+            from, mode, bands: mode==='brush'? [] : null };
+  pot.layers.push(L); G._dipLayer=L;
+  if(mode==='pour') for(let k=0;k<8;k++) dripLen[Math.floor(rnd(RADIAL))]=rnd(.10,.24);   // pours run
+  return L;
+}
+function mergeBands(bands){
+  if(bands.length<2) return bands;
+  const s=bands.slice().sort((a,b)=>a[0]-b[0]); const out=[s[0].slice()];
+  for(let i=1;i<s.length;i++){ const last=out[out.length-1];
+    if(s[i][0]<=last[1]+0.02) last[1]=Math.max(last[1],s[i][1]); else out.push(s[i].slice()); }
+  return out;
+}
+function brushAt(clientY){
+  const L=ensureSessionLayer('brush'); if(!L) return;
+  const yBot=potScreenY(pot.y), yTop=potScreenY(pot.y+pot.h);
+  const fr=clamp((yBot-clientY)/(yBot-yTop),0,1);
+  const half=0.07, lo=clamp(fr-half,0,1), hi=clamp(fr+half,0,1);
+  if(!L.bands) L.bands=[];
+  L.bands.push([lo,hi]); L.bands=mergeBands(L.bands);
+  L.thk=Math.min(6, L.thk+0.35); pot.glazeThk=Math.max(pot.glazeThk, L.thk);
+  recomputeCoverage(); repaintColors();
+  if(Math.random()<.3) AudioEng.scrape();
+}
 function showCarveChips(){
   const row=$('chipRow'); row.innerHTML=''; row.style.display='flex';
   CARVES.forEach(cv=>{
@@ -1828,6 +2174,59 @@ function showCarveChips(){
     };
     const lbl=document.createElement('div'); lbl.className='chipLbl'; lbl.textContent=cv.n;
     wrap.appendChild(el); wrap.appendChild(lbl); row.appendChild(wrap);
+  });
+}
+/* attach parts at leather-hard — the join is strongest here */
+function showPartChips(){
+  const row=$('partRow'); row.innerHTML=''; row.style.display='flex';
+  PART_KINDS.forEach(pk=>{
+    const b=document.createElement('button'); b.className='gm'+(pot.parts[pk.key]>0?' on':'');
+    b.innerHTML=`<span class="ge">${pk.e}</span>${pk.n}`;
+    b.onclick=()=>togglePart(pk.key,b);
+    row.appendChild(b);
+  });
+}
+function togglePart(key,btn){
+  if(pot.bisqued || pot.collapsed) return;
+  if(pot.parts[key]>0){ pot.parts[key]=0; btn.classList.remove('on'); banner('removed the '+key, 1.1); }
+  else {
+    const q=joinQuality(); pot.parts[key]=q; btn.classList.add('on');
+    const pk=PART_KINDS.find(p=>p.key===key);
+    banner(`${pk.n} attached — join ${q>.8?'strong':q>.55?'holding':'weak (may crack in the fire)'}`, 1.8, q<.55);
+    AudioEng.squish();
+    guide('Attached at leather-hard = a strong join. A cup + handle is a <b>mug</b>; a jug + spout a <b>pitcher</b>; add a lid for a <b>teapot</b>.');
+  }
+  rebuildLiveParts();
+  updateButtons();
+}
+/* painted decoration selector (leather-hard): technique + colour + motif */
+function showDecoChips(){
+  const row=$('decoRow'); row.innerHTML=''; row.style.display='flex';
+  const techOf=()=>DECO_TECHS.find(t=>t.key===pot.deco.tech);
+  const tech=document.createElement('button'); tech.className='gm on';
+  const paintTech=()=>{ const t=techOf(); tech.innerHTML=`<span class="ge">${t.sym}</span>${t.n}`; };
+  paintTech();
+  tech.onclick=()=>{ const i=DECO_TECHS.findIndex(t=>t.key===pot.deco.tech);
+    pot.deco.tech=DECO_TECHS[(i+1)%DECO_TECHS.length].key; paintTech(); repaintColors(); AudioEng.blip(480,.08,'triangle',.07); };
+  row.appendChild(tech);
+  const colb=document.createElement('button'); colb.className='gm';
+  const paintCol=()=>{ colb.innerHTML=`<span class="ge" style="color:#${pot.deco.color.toString(16).padStart(6,'0')}">●</span>Colour`; };
+  paintCol();
+  colb.onclick=()=>{ const i=DECO_COLORS.indexOf(pot.deco.color);
+    pot.deco.color=DECO_COLORS[(i+1)%DECO_COLORS.length]; paintCol(); repaintColors(); AudioEng.blip(560,.08,'triangle',.07); };
+  row.appendChild(colb);
+  DECO_MOTIFS.forEach(mo=>{
+    const b=document.createElement('button'); b.className='gm'+(pot.deco.motif===mo.key?' on':'');
+    b.innerHTML=`<span class="ge">${mo.sym}</span>${mo.n}`;
+    b.onclick=()=>{
+      pot.deco.motif=mo.key;
+      row.querySelectorAll('.gm').forEach(x=>{}); showDecoChips();
+      repaintColors();
+      if(mo.key!=='none') banner('decorated: '+mo.n+' · '+techOf().n.toLowerCase(), 1.4);
+      else banner('decoration cleared', 1);
+      AudioEng.scrape();
+    };
+    row.appendChild(b);
   });
 }
 
@@ -1878,9 +2277,14 @@ bindSegs('markSegs','mark');
 const ATMOS_HINT = {
   oxidation:'A clean, bright fire. Colours stay true and vivid. Safe.',
   reduction:'Starved of oxygen — glazes deepen and shift (coppers redden, celadons cool). Richer, and a touch riskier.',
+  raku:'Pulled glowing from the kiln into smoke: crackle networks, blackened bare clay, metallic flashes. Dramatic — and the thermal shock bites.',
+  wood:'Days of woodfire — flying ash flashes one side amber and toasty, glazes go earthy. Unpredictable and alive.',
+  salt:'Salt thrown into the white heat vapour-glazes the surface with a glassy orange-peel sheen. Characterful, a touch risky.',
 };
 bindSegs('atmosSegs','atmos', ()=>{ $('atmosHint').textContent = ATMOS_HINT[SET.atmos]; });
 bindSegs('stiltSegs','stilt');
+bindSegs('grindSegs','grind');
+bindSegs('lustreSegs','lustre');
 $('volRange').value = SET.vol*100;
 $('volRange').addEventListener('input', ()=>{ SET.vol=$('volRange').value/100; saveSet(); AudioEng.setVol(); });
 $('volRange').addEventListener('change', ()=> AudioEng.blip(700,.1,'triangle',.1));
@@ -1900,10 +2304,13 @@ $('gearBtn').addEventListener('pointerdown', e=>{
 function refreshStageHUD(){
   setPlayHUD(['wedge','center','throwing','glazeDip'].includes(G.state));
   $('meters').style.display = G.state==='throwing'?'block':'none';
+  const leatherHard = G.state==='throwing' && pot.moisture<=.55 && !pot.collapsed;
   if(G.state==='wedge') showClayChips();
-  else if(G.state==='glazeDip') $('chipRow').style.display='flex';
-  else if(G.state==='throwing' && pot.moisture<=.55 && !pot.collapsed) showCarveChips();
+  else if(G.state==='glazeDip'){ $('chipRow').style.display='flex'; $('glazeMethods').style.display='flex'; }
+  else if(leatherHard){ showCarveChips(); showPartChips(); showDecoChips(); }
   else $('chipRow').style.display='none';
+  if(G.state!=='glazeDip') $('glazeMethods').style.display='none';
+  if(!leatherHard){ $('partRow').style.display='none'; $('decoRow').style.display='none'; }
   updateButtons();
   setStage($('stageSub').textContent);
 }
@@ -1993,12 +2400,11 @@ function startKiln(kind){
   setStage('');
   $('stageBox').style.display='block';
   tub.visible=false; pot.y=0;
-  G.kilnT=0; G.kilnApplied=false;
-  const risk = kind==='bisque'? bisqueRisks() : glazeRisks();
-  const roll = Math.random();
-  if(roll < risk.total*.62) G.kilnOutcome='shatter';
-  else if(roll < risk.total) G.kilnOutcome='crack';
-  else G.kilnOutcome='ok';
+  G.kilnT=0; G.kilnApplied=false; G.kilnOutcome=null;   // outcome now rolls when you CUT the kiln
+  G.fire = { phase:'load', t:0, temp:0, hw:0, holding:false, warned:false,
+             quality:null, sc:fireSchedule(kind) };
+  if(hasParts()) rebuildLiveParts();       // fired parts match the final trimmed shape
+  $('fireCtl').style.display='none';
   pot.wobAmp=0; pot.instab=0; pot.shock.fill(0);
   banner(kind==='bisque'?'INTO THE BISQUE…':'THE GLAZE FIRE…', 2.2);
   AudioEng.hum(0); AudioEng.warn(0); AudioEng.rumble(1); AudioEng.creak();
@@ -2007,6 +2413,110 @@ function startKiln(kind){
   kilnLight.position.copy(KILN_POS).add(new THREE.Vector3(0,8,4));
   kilnLight.color.set(kind==='glaze' && G.atmosphere==='reduction' ? 0xff3208 : 0xff5a10);  // reduction burns smokier
   $('vignette').style.opacity=1;
+}
+
+/* ---------------- pro firing: schedule + pyrometric cones ----------------
+   The player drives the firing. Holding the burners raises temperature; the
+   kiln accumulates HEAT-WORK (temp² over time — exactly what real Orton cones
+   measure, not peak temperature). Three cones bend as heat-work passes their
+   rating. Cut when the target cone is down: too early underfires (dull, dry
+   glaze); pushing past the guard cone overfires (glaze runs, warps, sticks). */
+function fireSchedule(kind){
+  // cones listed low→high (fire first→last); the MIDDLE one is the target.
+  return kind==='bisque'
+    ? { guide:.34, target:.54, guard:.90, perfect:.15, cones:['06','04','02'], label:'CONE 04 · BISQUE' }
+    : { guide:.44, target:.72, guard:1.12, perfect:.19, cones:['5','6','7'],   label:'CONE 6 · GLAZE'  };
+}
+function beginSoak(){
+  const f=G.fire; if(!f || f.phase!=='load') return;
+  f.phase='soak'; f.t=0;
+  const sc=f.sc, max=sc.guard*1.14;
+  $('hwTarget').style.left=(sc.target/max*100)+'%';
+  $('hwGuard').style.left =(sc.guard /max*100)+'%';
+  const band=$('hwBand');
+  band.style.left =(sc.target/max*100)+'%';
+  band.style.width=(sc.perfect/max*100)+'%';
+  $('fireCtl').style.display='flex';
+  updateFireHUD();
+  banner('hold to heat · watch the cones', 2.6);
+  if(firstEver())
+    hint('<b>Hold 🔥 to heat the kiln.</b> The cones bend as heat builds. When the middle <b>target cone</b> (△'+sc.cones[1]+') tips over, <b>CUT KILN</b> for a clean firing.<br>Cut too early and the glaze stays dull; push past the last cone and it overfires.', 10);
+}
+function updateFireHUD(){
+  const f=G.fire, sc=f.sc, max=sc.guard*1.14;
+  $('hwFill').style.width=clamp(f.hw/max*100,0,100)+'%';
+  drawConePack();
+  const read=$('fireRead'); read.className='';
+  if(f.hw<sc.guide)                    read.textContent='cold — keep the heat on';
+  else if(f.hw<sc.target)              read.textContent='the target cone is softening…';
+  else if(f.hw<=sc.target+sc.perfect){ read.className='ready'; read.textContent='✓ cone down — CUT for a clean firing'; }
+  else if(f.hw<sc.guard){              read.className='hot';   read.textContent='running hot — cut now!'; }
+  else {                               read.className='hot';   read.textContent='OVERFIRING!'; }
+}
+function drawConePack(){
+  const cv=$('coneCanvas'); if(!cv) return;
+  const g=cv.getContext('2d'), W=cv.width, H=cv.height;
+  g.clearRect(0,0,W,H);
+  const f=G.fire, sc=f.sc, ratings=[sc.guide,sc.target,sc.guard];
+  const baseY=H-16, x0=W/2, spacing=66;
+  for(let i=0;i<3;i++){
+    const r=ratings[i];
+    const bend=clamp((f.hw - r*0.62)/(r*0.40),0,1);   // starts to lean ~60% of rating, down at rating
+    const cx=x0+(i-1)*spacing, target=(i===1);
+    drawCone(g,cx,baseY,bend,target);
+    g.fillStyle = target?'#ffd9a0':'rgba(255,233,200,.6)';
+    g.font=(target?'bold ':'')+'11px sans-serif'; g.textAlign='center';
+    g.fillText('△'+sc.cones[i], cx, H-2);
+  }
+}
+function drawCone(g,cx,baseY,bend,target){
+  const hgt=target?52:46, w=target?12:10;
+  g.save(); g.translate(cx,baseY);
+  g.fillStyle='#4a3226'; g.fillRect(-w-3,-2,(w+3)*2,5);   // shelf pad
+  g.rotate(bend*1.28);                                     // lean up to ~73°
+  const heat=clamp(bend,0,1);
+  g.beginPath(); g.moveTo(-w,0); g.lineTo(w,0); g.lineTo(0,-hgt); g.closePath();
+  const b = target?[236,206,150]:[206,191,171];
+  g.fillStyle=`rgb(${b[0]},${(b[1]-heat*45)|0},${(b[2]-heat*95)|0})`;
+  g.fill(); g.strokeStyle='rgba(40,20,10,.5)'; g.lineWidth=1; g.stroke();
+  if(target && heat>0){ g.fillStyle='rgba(255,120,40,'+(0.12+heat*0.4)+')'; g.beginPath(); g.arc(0,-hgt,4.5,0,7); g.fill(); }
+  g.restore();
+}
+function fireQualityLabel(q){
+  const c=G.fire?G.fire.sc.cones[1]:'6';
+  return q==='under'?'underfired — cone short' : q==='perfect'?('cone '+c+' — textbook ✓')
+       : q==='over'?'overfired — ran hot' : 'well fired';
+}
+function rollFireOutcome(){
+  const kind=G.kilnKind, f=G.fire, sc=f.sc;
+  let q;
+  if(f.hw < sc.target*0.92)           q='under';
+  else if(f.hw <= sc.target+sc.perfect) q='perfect';
+  else if(f.hw < sc.guard)            q='good';
+  else                                q='over';
+  f.quality=q; G._fireQuality=q;
+  const mod = q==='under'?0.7 : q==='perfect'?0.8 : q==='good'?1.0 : 1.7;   // hotter, longer = more risk
+  const risk = kind==='bisque'? bisqueRisks() : glazeRisks();
+  let total = clamp(risk.total*mod, .02, .96);
+  if(kind==='glaze'){                                       // specialty fires (raku/wood/salt) and a lustre pass add risk
+    total = clamp(total + (FIRE_TYPE_RISK[G.atmosphere]||0)*diff().risk + (G.lustre?.05:0), .02, .96);
+  }
+  if(firstEver()) total = Math.min(total, .04);   // the first piece can't break
+  const roll = Math.random();
+  if(roll < total*.62) G.kilnOutcome='shatter';
+  else if(roll < total) G.kilnOutcome='crack';
+  else G.kilnOutcome='ok';
+}
+function cutFiring(auto){
+  const f=G.fire; if(!f || f.phase!=='soak') return;
+  f.holding=false; $('heatHold').classList.remove('on'); AudioEng.warn(0);
+  rollFireOutcome();
+  $('fireCtl').style.display='none';
+  f.phase='reveal'; f.t=0; G.kilnApplied=false;
+  const q=f.quality;
+  const msg = q==='perfect'?'a clean firing ✓' : q==='under'?'cut early — underfired'
+            : q==='over'?'overfired!' : 'firing complete';
+  banner(msg, 2.0, q==='over');
 }
 function applyKilnOutcome(){
   if(G.kilnKind==='bisque') applyBisque(); else applyGlazeFire();
@@ -2024,14 +2534,18 @@ function applyBisque(){
   }
   pot.bisqued=true;
   pot.moisture=0;
+  const lostBisque = rollPartFailures();
   if(G.kilnOutcome==='crack'){
     pot.bisqueCracked=true; pot.cracks++;
     AudioEng.crack();
     crackSprite.visible=true;
     crackSprite.scale.set(1, pot.h/9, 1);
     banner('bisqued — with a hairline crack', 2, true);
+  } else if(lostBisque.length){
+    AudioEng.crack();
+    banner('bisqued — the '+lostBisque[0]+' cracked off', 2, true);
   } else {
-    banner('BISQUE SURVIVED', 1.6);
+    banner(G._fireQuality==='under' ? 'bisqued — a touch soft' : 'BISQUE SURVIVED', 1.6);
     AudioEng.chime(1);
   }
   clayMat.color.set(0xffffff);
@@ -2040,7 +2554,7 @@ function applyBisque(){
 }
 function toGlazeDip(){
   G.state='glazeDip';
-  G._dipLayer=null;
+  G._dipLayer=null; pot.glazeMethod='dip';
   potRoot.position.set(0,0,0);
   refreshStageHUD();
   tub.visible=true;
@@ -2048,9 +2562,10 @@ function toGlazeDip(){
   setStage('coverage 0%');
   setCam(0,18,46, 0,11,0);
   AudioEng.hum(.15);
-  guide('<b>DRAG ↓</b> to dip · pick a new colour to layer · <b>🕯️ WAX</b> protects covered glaze');
-  hint('Deeper = more coverage. Longer = thicker coat (heavy coats run!).<br>Dip, wax, switch colour, dip again for two-tone.', 8);
+  guide('<b>DRAG ↓</b> to dip · pick a colour to layer · <b>🕯️ WAX</b> protects covered glaze');
+  hint('Four ways to glaze — <b>Dip</b>, <b>Pour</b>, <b>Brush</b>, <b>Spray</b> (pick a method below).<br>Switch colour or method and coat again to layer. Heavy coats run in the fire!', 9);
   showGlazeChips();
+  showGlazeMethods();
 }
 function setGlazeColor(g){
   pot.activeGlaze = g;
@@ -2061,9 +2576,19 @@ function glazeNames(){
   pot.layers.forEach(l=>{ if(!seen.includes(l.n)) seen.push(l.n); });
   return seen.join(' + ') || '—';
 }
+function glazeMethodsUsed(){
+  const seen=[];
+  pot.layers.forEach(l=>{ const m=l.mode||'dip'; if(!seen.includes(m)) seen.push(m); });
+  return seen.map(m=>{ const e=GLAZE_METHODS.find(x=>x.key===m); return e? e.n.toLowerCase() : m; }).join(' + ') || 'dip';
+}
+function layerCoverageFrac(L){
+  let n=0,tot=0;
+  for(let i=0;i<RINGS;i++){ const yn=i/(RINGS-1); if(yn<GLAZE_FOOT) continue; tot++; if(ringCovered(L,yn,0)) n++; }
+  return tot? n/tot : 0;
+}
 function applyGlazeFire(){
   const risks=glazeRisks();
-  const kind=classifyPiece();
+  let kind=classifyPiece();
   if(G.kilnOutcome==='shatter'){
     const ran = risks.heavy>.1 && !G.stilt && Math.random()<.6;   // a stilt saves a runny glaze
     if(ran){
@@ -2082,29 +2607,42 @@ function applyGlazeFire(){
     return;
   }
   const cracked = G.kilnOutcome==='crack';
+  const lostGlaze = rollPartFailures();
+  if(lostGlaze.length) kind=classifyPiece();     // losing a part can change what it is
   const cov = Math.round(pot.glazedFrac*100);
   const coat = pot.glazeThk>5?'heavy':pot.glazeThk>1.5?'good':'thin';
   // the kiln develops each layer's colour a little differently every time,
-  // and the firing atmosphere shifts it — oxidation stays bright, reduction deepens
-  const reduction = G.atmosphere==='reduction';
+  // and the firing TYPE shifts it — oxidation bright, reduction deep, raku/wood/salt characterful
+  const type = G.atmosphere || 'oxidation';
+  const q = G.fire ? G.fire.quality : 'good';   // how well you fired it
   pot.layers.forEach(l=>{
     l.cC.offsetHSL(rnd(-.02,.02), rnd(-.06,.06), rnd(-.03,.03));
     if(pot.clay.key==='porcelain') l.cC.offsetHSL(0,.04,.05);   // porcelain makes glazes sing
-    if(reduction){
+    if(type==='reduction'){
       const hsl={}; l.cC.getHSL(hsl);
       const dh = (hsl.h>.25 && hsl.h<.5)? -.03 : (hsl.h<.06||hsl.h>.95)? -.012 : 0;  // greens cool, reds deepen
       l.cC.offsetHSL(dh, .13, -.06);
-    } else {
-      l.cC.offsetHSL(0, -.03, .03);                              // oxidation: bright & clean
-    }
+    } else if(type==='raku'){ l.cC.offsetHSL(rnd(-.04,.04), .12, rnd(-.03,.05)); }   // lustrous, variable, metallic
+    else if(type==='wood'){  l.cC.offsetHSL(.03, .05, -.04); }                        // ashy, earthy, warm
+    else if(type==='salt'){  l.cC.offsetHSL(0, .06, .03); }                           // glassy orange-peel, brighter
+    else { l.cC.offsetHSL(0, -.03, .03); }                                            // oxidation: bright & clean
+    // firing maturity: underfired glaze stays dry & dull, a clean firing sings,
+    // an overfire burns the colour out and thins it at the rim
+    if(q==='under')        l.cC.offsetHSL(0, -.22, -.03);
+    else if(q==='perfect') l.cC.offsetHSL(0,  .07,  .015);
+    else if(q==='over')    l.cC.offsetHSL(0, -.06,  .05);
   });
   const fin=glazeFinish();
   clayMat.roughness = fin==='gloss'?.2:fin==='satin'?.45:.62;
   clayMat.clearcoat = fin==='gloss'?.7:fin==='satin'?.3:.1;
   clayMat.clearcoatRoughness=.32; clayMat.envMapIntensity=.42;
+  if(type==='raku'||type==='salt'){ clayMat.clearcoat=Math.min(1,clayMat.clearcoat+.2); clayMat.roughness*=.8; clayMat.envMapIntensity=.6; }
+  else if(type==='wood'){ clayMat.roughness=Math.min(.9,clayMat.roughness+.15); }
+  if(q==='under'){ clayMat.roughness=Math.min(.9, clayMat.roughness+.32); clayMat.clearcoat*=.35; }  // immature = matte, dry
+  else if(q==='perfect'){ clayMat.clearcoat=Math.min(1, clayMat.clearcoat+.08); clayMat.envMapIntensity=.5; }
   repaintColors();
   if(cracked){ AudioEng.crack(); crackSprite.visible=true; crackSprite.scale.set(1, pot.h/9, 1); }
-  const flawless = !cracked && !pot.collapsed && !pot.bisqueCracked && risks.total<.12 && cov>70 && coat==='good';
+  const flawless = !cracked && !pot.collapsed && !pot.bisqueCracked && risks.total<.12 && cov>70 && coat==='good' && (q==='perfect'||q==='good');
   G._fireCracked = cracked; G._fireFlawless = flawless;   // feed the star rating
   let title, flavor;
   if(pot.collapsed){
@@ -2112,8 +2650,16 @@ function applyGlazeFire(){
     flavor = title.includes('Avant') ? 'It slumped in a way that suggests intent. You decide it was intent.'
                                      : 'It is honest. That is the kindest word for it.';
   } else if(flawless){
-    title='✨ FLAWLESS';
-    flavor='Wedged, centred, thrown, trimmed, bisqued, dipped, fired. Every step done right — and it shows. Odile would have said nothing, but slower than usual.';
+    title = q==='perfect' ? '✨ FLAWLESS · CONE '+G.fire.sc.cones[1] : '✨ FLAWLESS';
+    flavor = q==='perfect'
+      ? 'Wedged, centred, thrown, trimmed, bisqued, dipped — and fired to the cone, not a breath past. The glaze reached full depth. Odile would have said nothing, but slower than usual.'
+      : 'Wedged, centred, thrown, trimmed, bisqued, dipped, fired. Every step done right — and it shows.';
+  } else if(q==='under' && !cracked){
+    title='🌫️ Underfired';
+    flavor='You cut the kiln before the cone came down. The glaze never fully melted — it\'s dry and chalky to the touch. It stays on the shelf, a quiet lesson in patience.';
+  } else if(q==='over' && !cracked){
+    title='🔥 Overfired';
+    flavor='You pushed it past the guard cone. The glaze ran thin and burned pale at the rim, and the wall took a lean in the heat. Character, if you\'re generous.';
   } else if(cracked){
     title='⚡ Survived… cracked';
     flavor='It sings a sad little note when tapped. It stays on the shelf anyway. Scars are stories.';
@@ -2124,14 +2670,28 @@ function applyGlazeFire(){
       'Warm from the kiln, it fits your hands exactly.',
       'The wheel, both fires, and you — all in agreement today.']);
   }
+  if(!pot.collapsed){
+    if(type==='raku')      flavor='Yanked glowing into the smoke — crackle races the glaze and the bare clay drinks the carbon black. '+flavor;
+    else if(type==='wood') flavor='The flame licked one flank amber with flying ash. '+flavor;
+    else if(type==='salt') flavor='The salt vapour left a glassy orange-peel skin. '+flavor;
+    if(G.lustre) flavor+=' A third, low lustre firing gilded the rims in gold.';
+    if(G.grind)  flavor+=' You ground the foot smooth — it sits without a wobble.';
+  }
   const rows=[['Piece','a '+kind],
     ...(G.form && G.form.key!=='free' && !pot.collapsed ? [['Sketch', `${G.form.n} · ${Math.round(matchPct())}%`]] : []),
     ['Clay', pot.clay.n],
-    ...(pot.carve!=='none' ? [['Decoration', CARVES.find(c=>c.key===pot.carve).n+'-carved']] : []),
+    ...(pot.carve!=='none' ? [['Carving', CARVES.find(c=>c.key===pot.carve).n+'-carved']] : []),
+    ...(pot.deco.motif!=='none' ? [['Decoration', DECO_MOTIFS.find(m=>m.key===pot.deco.motif).n+' · '+DECO_TECHS.find(t=>t.key===pot.deco.tech).n.toLowerCase()]] : []),
     ['Bisque', pot.bisqueCracked?'hairline crack':'clean'],
     ['Glaze', glazeNames()+' · '+cov+'%'],
+    ['Applied', glazeMethodsUsed()],
+    ...(hasParts() ? [['Parts', partsUsedLabel()]] : []),
+    ...(lostGlaze.length ? [['Lost in fire', lostGlaze.join(', ')+' cracked off']] : []),
     ['Coat', coat],
-    ['Atmosphere', G.atmosphere==='reduction'?'reduction 🔥':'oxidation'],
+    ['Firing type', FIRE_TYPE_LABEL[type]||type],
+    ['Firing', fireQualityLabel(q)],
+    ...(G.lustre ? [['Lustre', 'gold — 3rd fire ✨']] : []),
+    ...(G.grind ? [['Foot', 'ground smooth']] : []),
     ['Walls', wallReport()],
     ['Glaze fire', cracked?'cracked but standing':flawless?'flawless':'survived'],
     ['Signed', SET.mark]];
@@ -2139,7 +2699,7 @@ function applyGlazeFire(){
   if(G.commission){
     const o=G.commission;
     const m=Math.round(matchPct());
-    const glazeOK = !o.glaze || pot.layers.some(l=>l.n===o.glaze && l.frac>=.4);
+    const glazeOK = !o.glaze || pot.layers.some(l=>l.n===o.glaze && layerCoverageFrac(l)>=.4);
     if(!pot.collapsed && m>=o.minMatch && glazeOK){
       G.coins += o.pay; saveCoins();
       rows.push(['Commission', `fulfilled! +${o.pay}c`]);
@@ -2180,7 +2740,7 @@ function showResult(title, flavor, rows, survived=false){
 /* ---------------- hero display of a finished piece ---------------- */
 let displayMesh=null;
 function clearDisplayMesh(){
-  if(displayMesh){ scene.remove(displayMesh); displayMesh.geometry.dispose(); displayMesh.material.dispose(); displayMesh=null; }
+  if(displayMesh){ scene.remove(displayMesh); disposePiece(displayMesh); displayMesh=null; }
   potMesh.visible=true; baseCap.visible=true;
 }
 function framePiece(){
@@ -2260,7 +2820,7 @@ function renderThumb(d){
     thumbScene.add(new THREE.AmbientLight(0x6a4c40,.9));
     thumbCam=new THREE.PerspectiveCamera(38,220/264,.1,200);
   }
-  if(thumbMesh){ thumbScene.remove(thumbMesh); thumbMesh.geometry.dispose(); thumbMesh.material.dispose(); }
+  if(thumbMesh){ thumbScene.remove(thumbMesh); disposePiece(thumbMesh); }
   thumbMesh=makePieceMesh(d); thumbMesh.rotation.y=.6; thumbScene.add(thumbMesh);
   let rMax=0; for(const v of d.r) rMax=Math.max(rMax,v);
   const cy=d.h*.5, size=Math.max(d.h, rMax*2);
@@ -2321,7 +2881,7 @@ function applySave(o){
   G.coins = +(localStorage.getItem('mudember_coins')||0);
   orders=[]; loadOrders();
   const sc = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay')); if(sc) pot.clay=sc;
-  shelfPieces.forEach(p=>{ scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); });
+  shelfPieces.forEach(p=>{ scene.remove(p.mesh); disposePiece(p.mesh); });
   shelfPieces.length=0; loadShelf();
   $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
 }
@@ -2505,7 +3065,20 @@ function openKilnLoad(){
   $('atmosHint').textContent = ATMOS_HINT[SET.atmos];
   showScreen('kilnLoadScreen');
 }
-$('kilnLoadFire').onclick = ()=>{ G.atmosphere=SET.atmos; G.stilt=(SET.stilt==='stilt'); startKiln('glaze'); };
+$('kilnLoadFire').onclick = ()=>{ G.atmosphere=SET.atmos; G.stilt=(SET.stilt==='stilt');
+  G.grind=(SET.grind==='ground'); G.lustre=(SET.lustre==='gold'); startKiln('glaze'); };
+
+/* pro firing: HEAT is a hold button, CUT ends the firing */
+(function(){
+  const hb=$('heatHold');
+  const press=e=>{ if(G.fire && G.fire.phase==='soak'){ G.fire.holding=true; hb.classList.add('on'); AudioEng.resume&&AudioEng.resume(); } if(e && e.cancelable) e.preventDefault(); };
+  const release=()=>{ if(G.fire) G.fire.holding=false; hb.classList.remove('on'); };
+  hb.addEventListener('pointerdown',press);
+  hb.addEventListener('pointerup',release);
+  hb.addEventListener('pointerleave',release);
+  hb.addEventListener('pointercancel',release);
+  $('cutKiln').onclick=()=>{ if(G.fire && G.fire.phase==='soak') cutFiring(false); };
+})();
 
 /* ---------------- input ---------------- */
 let touching=false, lastX=0, lastY=0;
@@ -2517,7 +3090,7 @@ function potScreenY(worldY){
 renderer.domElement.addEventListener('pointerdown', e=>{
   AudioEng.init(); AudioEng.resume();
   touching=true; lastX=e.clientX; lastY=e.clientY;
-  if(G.state==='glazeDip') G._dipLayer=null;      // new dip session
+  if(G.state==='glazeDip'){ G._dipLayer=null; if(pot.glazeMethod==='brush') brushAt(e.clientY); }   // new coat session
   if(G.state==='wedge'){
     wedgeAnim=1;
     if(pot.bubbles>0){
@@ -2537,7 +3110,8 @@ addEventListener('pointermove', e=>{
   if(!touching) return;
 
   if(G.state==='glazeDip'){
-    pot.y = clamp(pot.y - dy*.06, LIQ_Y-MAX_H-3, 14);
+    if(pot.glazeMethod==='dip') pot.y = clamp(pot.y - dy*.06, LIQ_Y-MAX_H-3, 14);
+    else if(pot.glazeMethod==='brush') brushAt(e.clientY);
     return;
   }
   if(G.state!=='throwing' || pot.collapsed) return;
@@ -2637,8 +3211,8 @@ function tick(now){
       clayMat.roughness = lerp(.5,.85,1-pot.moisture);
       const leather = pot.moisture<=.55;
       if(leather!==wasLeather){ wasLeather=leather; updateButtons();
-        if(leather){ banner('leather-hard — you can trim & carve now', 1.8); showCarveChips(); }
-        else $('chipRow').style.display='none'; }
+        if(leather){ banner('leather-hard — trim, carve, attach & decorate', 1.8); showCarveChips(); showPartChips(); showDecoChips(); }
+        else { $('chipRow').style.display='none'; $('partRow').style.display='none'; $('decoRow').style.display='none'; } }
       if(pot.moisture>.5 && Math.random()<dt*2.2) emitWisp();
     }
     const inst = pot.collapsed? 0 : computeInstability();
@@ -2683,83 +3257,115 @@ function tick(now){
   }
   if(ghostMesh) ghostMesh.visible = G.state==='throwing' && !pot.collapsed;
 
-  /* dipping */
+  /* glaze application — dip / pour / brush / spray */
   if(G.state==='glazeDip'){
-    if(!touching) pot.y = lerp(pot.y, 14, 1-Math.exp(-dt*4));
-    const submerged = clamp((LIQ_Y - pot.y)/pot.h, 0, 1);
-    if(submerged>0 && pot.activeGlaze){
-      // each dip session lays a fresh layer of the active glaze
-      if(!G._dipLayer){
-        if(pot.layers.length>=4) G._dipLayer = pot.layers[pot.layers.length-1];
-        else {
-          G._dipLayer = { n:pot.activeGlaze.n, f:pot.activeGlaze.f, react:pot.activeGlaze.react||'none',
-            cC:new THREE.Color(pot.activeGlaze.c), frac:0, thk:0, waxed:false };
-          pot.layers.push(G._dipLayer);
+    const method=pot.glazeMethod;
+    if(method==='dip'){
+      if(!touching) pot.y = lerp(pot.y, 14, 1-Math.exp(-dt*4));
+      const submerged = clamp((LIQ_Y - pot.y)/pot.h, 0, 1);
+      if(submerged>0 && pot.activeGlaze){
+        const L=ensureSessionLayer('dip');
+        if(L){
+          if(submerged > L.frac){ L.frac=submerged; recomputeCoverage(); repaintColors(); }
+          L.thk += dt*2; pot.glazeThk += dt*2;
+          if(Math.random()<.1) AudioEng.slosh();
+          liquid.scale.setScalar(1+Math.sin(now*.01)*.01);
         }
       }
-      if(submerged > G._dipLayer.frac){
-        G._dipLayer.frac = submerged;
-        pot.glazedFrac = Math.max(pot.glazedFrac, submerged);
-        repaintColors();
+    } else if(method==='pour'){
+      if(touching && pot.activeGlaze){
+        const L=ensureSessionLayer('pour');
+        if(L){
+          L.frac = Math.min(1, L.frac + dt*0.5);        // sheet of glaze creeps down from the rim
+          L.thk += dt*2.4; pot.glazeThk += dt*2.4;       // pours build fast — heavy coats run
+          recomputeCoverage(); repaintColors();
+          if(Math.random()<.22) AudioEng.slosh();
+          liquid.scale.setScalar(1+Math.sin(now*.02)*.02);
+        }
       }
-      G._dipLayer.thk += dt*2;
-      pot.glazeThk += dt*2;
-      if(Math.random()<.1) AudioEng.slosh();
-      liquid.scale.setScalar(1+Math.sin(now*.01)*.01);
+    } else if(method==='spray'){
+      if(touching && pot.activeGlaze){
+        const L=ensureSessionLayer('spray');
+        if(L){
+          L.frac = 1;                                    // even mist over the whole piece
+          L.thk += dt*0.8; pot.glazeThk += dt*0.8;       // thin & even — the safe, slow coat
+          recomputeCoverage(); repaintColors();
+          if(Math.random()<.14) AudioEng.blip(2100,.02,'triangle',.025);
+        }
+      }
     }
+    // brush is applied on pointer move/down (brushAt)
     const cov=Math.round(pot.glazedFrac*100);
     const coat = pot.glazeThk>5?'heavy!':pot.glazeThk>1.5?'good':'thin';
     const nLayers = pot.layers.length;
-    setStage(`coverage ${cov}% · coat: ${coat}${nLayers>1? ` · ${nLayers} layers`:''}`);
+    const mName = (GLAZE_METHODS.find(m=>m.key===method)||{n:''}).n.toLowerCase();
+    setStage(`${mName} · coverage ${cov}% · coat: ${coat}${nLayers>1? ` · ${nLayers} coats`:''}`);
     const risk=glazeRisks();
     const rt=$('riskTag');
     if(rt) rt.textContent = `glaze risk ${Math.round(risk.total*100)}% — ${risk.why}`;
     $('fireBtn').classList.toggle('hot', risk.total>.35);
   }
 
-  /* kiln cinematic */
-  if(inKiln){
-    G.kilnT += dt;
-    const t = G.kilnT;
-    // pot travels to the kiln
-    if(t<=KT.travel){
-      const k = t/KT.travel;
-      potRoot.position.lerpVectors(new THREE.Vector3(0,0,0), POT_KILN, k*k*(3-2*k));
-      potRoot.position.y += Math.sin(k*Math.PI)*6;   // gentle arc, carried by unseen hands
-    } else potRoot.position.copy(POT_KILN);
-    // door
-    let doorK = 0;
-    if(t>KT.travel && t<=KT.doorShut) doorK = (t-KT.travel)/(KT.doorShut-KT.travel);
-    else if(t>KT.doorShut && t<=KT.heatEnd) doorK = 1;
-    else if(t>KT.heatEnd && t<=KT.doorOpen) doorK = 1-(t-KT.heatEnd)/(KT.doorOpen-KT.heatEnd);
-    kilnDoor.position.y = lerp(DOOR_OPEN_Y, DOOR_CLOSED_Y, doorK);
-    if(!G._doorSfx && doorK>=1){ G._doorSfx=true; AudioEng.thud(); }
-    // heat
-    const heatK = clamp((t-KT.doorShut)/(KT.heatEnd-KT.doorShut),0,1);
-    const heat = Math.sin(heatK*Math.PI);
-    clayMat.emissiveIntensity = heat*1.2;
-    kilnLight.intensity = heat*160 + (doorK<1? heat*60:0);
-    peephole.material.opacity = doorK*heat;
-    AudioEng.rumble(.4+heat*.6);
-    // kiln trembles at peak heat
+  /* kiln cinematic — now an interactive firing you drive */
+  if(inKiln && G.fire){
+    const f=G.fire; f.t+=dt; const t=f.t;
     kilnG.position.copy(KILN_POS);
-    if(heat>.6){ kilnG.position.x += rnd(-.06,.06)*heat; kilnG.position.z += rnd(-.06,.06)*heat; }
-    // reveal
-    if(t>KT.heatEnd && !G.kilnApplied){
-      G.kilnApplied=true;
-      burstSparks();
-      AudioEng.creak();
-      applyKilnOutcome();
+
+    if(f.phase==='load'){
+      // pot travels in, door seals, a first breath of warmth
+      if(t<=KT.travel){
+        const k=t/KT.travel;
+        potRoot.position.lerpVectors(new THREE.Vector3(0,0,0), POT_KILN, k*k*(3-2*k));
+        potRoot.position.y += Math.sin(k*Math.PI)*6;
+      } else potRoot.position.copy(POT_KILN);
+      let doorK=0;
+      if(t>KT.travel && t<=KT.doorShut) doorK=(t-KT.travel)/(KT.doorShut-KT.travel);
+      else if(t>KT.doorShut) doorK=1;
+      kilnDoor.position.y = lerp(DOOR_OPEN_Y, DOOR_CLOSED_Y, doorK);
+      if(!G._doorSfx && doorK>=1){ G._doorSfx=true; AudioEng.thud(); }
+      const warm=clamp((t-KT.travel)/Math.max(.01,KT.doorShut-KT.travel),0,1)*.25;
+      clayMat.emissiveIntensity=warm; kilnLight.intensity=warm*70;
+      AudioEng.rumble(.4);
+      if(doorK>=1 && t>KT.doorShut+.2) beginSoak();
     }
-    if(t>=KT.done){
-      G._doorSfx=false;
-      AudioEng.rumble(0);
-      AudioEng.duckMusic(false);
-      $('vignette').style.opacity=0;
-      clayMat.emissiveIntensity=0; kilnLight.intensity=0;
-      kilnG.position.copy(KILN_POS);
-      if(G.kilnKind==='bisque' && G.kilnOutcome!=='shatter') toGlazeDip();
-      else { G.state='result'; showScreen('resultScreen'); }
+    else if(f.phase==='soak'){
+      potRoot.position.copy(POT_KILN);
+      kilnDoor.position.y=DOOR_CLOSED_Y;
+      // burners: hold to heat, release to coast down
+      if(f.holding) f.temp=Math.min(1.18, f.temp+dt*0.62);
+      else          f.temp=Math.max(0,    f.temp-dt*0.34);
+      if(f.temp>0.05) f.hw += f.temp*f.temp*dt*0.20;   // heat-work integral
+      const glow=f.temp;
+      clayMat.emissiveIntensity = 0.14 + glow*1.15;
+      kilnLight.intensity = glow*150 + 40;
+      peephole.material.opacity = Math.min(1, 0.3+glow);
+      AudioEng.rumble(.4 + glow*.55);
+      if(glow>.6){ kilnG.position.x += rnd(-.05,.05)*glow; kilnG.position.z += rnd(-.05,.05)*glow; }
+      // overfire alarm as you cross out of the clean window; forced cut at the guard cone
+      const sc=f.sc;
+      if(f.hw>=sc.target+sc.perfect && !f.warned){ f.warned=true; AudioEng.warn(.7); }
+      if(f.hw< sc.target+sc.perfect &&  f.warned){ f.warned=false; AudioEng.warn(0); }
+      if(f.hw>=sc.guard){ cutFiring(true); }
+      updateFireHUD();
+    }
+    else if(f.phase==='reveal'){
+      potRoot.position.copy(POT_KILN);
+      const cool=clamp(1-t/1.1,0,1);
+      clayMat.emissiveIntensity=cool*1.0;
+      kilnLight.intensity=cool*120;
+      let doorK=1;
+      if(t>0.5) doorK=1-clamp((t-0.5)/0.7,0,1);
+      kilnDoor.position.y=lerp(DOOR_OPEN_Y, DOOR_CLOSED_Y, doorK);
+      peephole.material.opacity=cool;
+      AudioEng.rumble(cool*.5);
+      if(!G.kilnApplied && t>0.5){ G.kilnApplied=true; burstSparks(); AudioEng.creak(); applyKilnOutcome(); }
+      if(t>=1.9){
+        G._doorSfx=false; AudioEng.rumble(0); AudioEng.warn(0); AudioEng.duckMusic(false);
+        $('vignette').style.opacity=0; clayMat.emissiveIntensity=0; kilnLight.intensity=0;
+        kilnG.position.copy(KILN_POS);
+        if(G.kilnKind==='bisque' && G.kilnOutcome!=='shatter') toGlazeDip();
+        else { G.state='result'; showScreen('resultScreen'); }
+      }
     }
   }
 
@@ -2843,6 +3449,9 @@ function tick(now){
   }
 
   if(potMesh.visible) rebuildPot();
+  // attached parts ride with the pot — spin, base height, and visibility all follow the body
+  livePartsGroup.visible = potMesh.visible && hasParts();
+  if(livePartsGroup.visible){ livePartsGroup.rotation.y = spin; livePartsGroup.position.y = pot.y; }
   renderFrame();
 }
 

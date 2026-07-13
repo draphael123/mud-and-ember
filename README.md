@@ -23,11 +23,39 @@ CDN). No build step — open `index.html`.
 - Every firing bakes a unique **fired character** — subtle belly/waist, lean, uneven
   rim, warping, glaze colour-shift and drips — so no two pieces come out alike, even
   from the same shape and glaze. Each piece earns a **★ star rating** for craft.
-- **Bisque fire** → **dip-glaze** (layer colours, use **wax resist** for two-tone) →
-  **load the kiln** (fire in **oxidation** for bright true colour or **reduction** to
-  deepen and shift it; put it **on a stilt** so a running glaze can't weld to the
-  shelf) → **glaze fire**. Both firings roll real risk from your shortcuts: wet clay
-  and air bubbles burst, thin walls split, heavy glaze runs.
+- **Four ways to glaze.** Choose your application method, and mix them on one piece:
+  **Dip** (drag the pot into the tub — an even coat, bottom-up to the glaze line),
+  **Pour** (hold to pour over the rim — coats top-down with runs and drips, builds thick
+  and can run in the fire), **Brush** (drag up and down the wall to paint partial bands
+  exactly where you want), and **Spray** (hold to mist the whole piece — thin, soft and
+  even, the safe slow coat). Layer colours and methods, and use **wax resist** to
+  protect a coat before the next.
+- **Attach parts at leather-hard** — pull on a **handle**, a **spout**, or a **lid** and
+  the piece becomes what it's for: a cup + handle is a **mug**, a jug + spout a
+  **pitcher**, handle + spout a **teapot**, add a lid for a **lidded jar**. Attach at the
+  right moisture for a strong join — a weak join can crack off in the fire.
+- **Decorate the surface** at leather-hard: paint a motif (dots, dashes, bands, wave,
+  chevron, vine, cross-hatch) in an **underglaze** or **slip** colour, scratch it back to
+  bare clay with **sgraffito**, or press it in as a darker **stamp**. The colour comes up
+  in the fire.
+- **Bisque fire** → **glaze** (dip / pour / brush / spray; layer colours, **wax resist**
+  for two-tone) →
+  **load the kiln** and choose your **firing type** — **oxidation** (bright, safe),
+  **reduction** (deep, shifted), or the specialty fires: **raku** (crackle + smoke-black
+  bare clay + metallic flash), **wood** (amber ash-flashing down one flank), **salt**
+  (glassy orange-peel). Specialty fires are riskier but characterful. Put it **on a
+  stilt** so a running glaze can't weld to the shelf, then **cold-finish**: **grind the
+  foot smooth**, and optionally add a **gold lustre** third firing that gilds the rims.
+  → **glaze fire**. Every firing rolls real risk from your shortcuts: wet clay and air
+  bubbles burst, thin walls split, heavy glaze runs, weak joins let go.
+- **You drive the firing.** Once the kiln door seals, **hold to heat** and watch a pack
+  of **pyrometric cones** bend — they track *heat-work* (temperature over time, exactly
+  like real Orton cones), not just peak temperature. When the middle **target cone**
+  (Cone 04 bisque, Cone 6 glaze) tips over, **cut the kiln** for a clean firing.
+  **Underfire** (cut too early) and the glaze stays dry, dull and immature (−rating);
+  fire to the cone for the fullest colour and a rating bonus; push past the **guard
+  cone** and it **overfires** — the glaze burns pale and runs, the wall leans, and the
+  break risk climbs. Release the heat to hold steady in the window.
 - **Sign your work** with a maker's mark (Settings) — it's recorded on every piece.
 - Ten forms and eighteen glazes with real-ceramic finishing — a trimmed foot ring
   the pot stands on, glaze pooling and breaking rusty on the rims, gentle mottling,
