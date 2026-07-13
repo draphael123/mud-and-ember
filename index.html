@@ -316,6 +316,7 @@
     <button class="btn bigBtn" id="startBtn">OPEN THE STUDIO</button>
     <button class="btn bigBtn" id="galleryBtn" style="font-size:14px;padding:11px 30px;">🖼️ MY GALLERY</button>
     <button class="btn bigBtn" id="journalBtn" style="font-size:14px;padding:11px 30px;">📖 JOURNAL</button>
+    <button class="btn bigBtn" id="challengeBtn" style="font-size:14px;padding:11px 30px;">🎯 CHALLENGES</button>
     <button class="btn bigBtn" id="shopBtn" style="font-size:14px;padding:11px 30px;">🛒 SHOP</button>
     <button class="btn bigBtn" id="cloudBtn" style="font-size:14px;padding:11px 30px;">☁️ CLOUD SAVE</button>
     <button class="btn bigBtn" id="musicTitleBtn" style="font-size:14px;padding:11px 30px;">🎵 MUSIC</button>
@@ -454,6 +455,13 @@
     <div class="tag" id="shopTag"></div>
     <div id="shopBody"></div>
     <button class="btn bigBtn" id="shopClose">← BACK</button>
+  </div>
+
+  <div class="screen" id="challengeScreen">
+    <h2>🎯 Challenges</h2>
+    <div class="tag" id="challengeTag"></div>
+    <div id="challengeBody"></div>
+    <button class="btn bigBtn" id="challengeClose">← BACK</button>
   </div>
 
   <div class="screen" id="cloudScreen">
@@ -822,7 +830,11 @@ const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, .1, 300);
 /* eased camera rig: each stage sets a target; tick() glides toward it */
 const camPos = new THREE.Vector3(0,15,46), camLook = new THREE.Vector3(0,9,0);
 const camPosT = camPos.clone(), camLookT = camLook.clone();
-function setCam(px,py,pz, lx,ly,lz){ camPosT.set(px,py,pz); camLookT.set(lx,ly,lz); }
+/* free-orbit offset the player drives (two-finger drag / pinch / one-finger on the display) */
+const orbit = {az:0, el:0, zoom:1};
+const ORBIT_ZMIN=.5, ORBIT_ZMAX=2.4, _camOff = new THREE.Vector3();
+function resetOrbit(){ orbit.az=0; orbit.el=0; orbit.zoom=1; }
+function setCam(px,py,pz, lx,ly,lz){ camPosT.set(px,py,pz); camLookT.set(lx,ly,lz); resetOrbit(); }
 camera.position.copy(camPos); camera.lookAt(camLook);
 
 const key = new THREE.DirectionalLight(0xffe0b8, 2.6);
@@ -836,7 +848,7 @@ scene.add(key);
 const fill = new THREE.DirectionalLight(0x9aa0b8, .5); fill.position.set(18, 8, -6); scene.add(fill);
 // warm rim from the window side, so the pot's silhouette glows
 const rim = new THREE.DirectionalLight(0xffc890, .7); rim.position.set(-24, 12, -10); scene.add(rim);
-scene.add(new THREE.AmbientLight(0x6a4c40, .8));
+const amb = new THREE.AmbientLight(0x6a4c40, .8); scene.add(amb);
 const kilnLight = new THREE.PointLight(0xff5a10, 0, 55); scene.add(kilnLight);
 const shelfLight = new THREE.PointLight(0xffc890, 22, 30, 1.6); shelfLight.position.set(0, 26, -18); scene.add(shelfLight);
 // a warm hanging lamp over the wheel that gently flickers — the studio's heartbeat
@@ -973,8 +985,8 @@ const wheel = new THREE.Group(); scene.add(wheel);
   scene.add(bucket);
 }
 
-/* ---- studio life: hanging lamp, potted plant, a sleeping cat ---- */
-let lampShade, catGroup;
+/* ---- studio life: hanging lamp, potted plant, a sleeping cat, a drifting moth ---- */
+let lampShade, catGroup, studioPlant, catTail, moth;
 {
   // hanging lamp over the wheel (paired with lampLight)
   const cord = new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,10,6),
@@ -1001,7 +1013,7 @@ let lampShade, catGroup;
     leaf.scale.set(.4,1.5,.4); leaf.rotation.z=Math.cos(a)*.5; leaf.rotation.x=Math.sin(a)*.5;
     plant.add(leaf);
   }
-  plant.position.set(16.5,-1.3,-20); plant.children.forEach(c=>c.castShadow=true); scene.add(plant);
+  plant.position.set(16.5,-1.3,-20); plant.children.forEach(c=>c.castShadow=true); scene.add(plant); studioPlant=plant;
 
   // a sleeping cat curled on the floor (breathes in tick)
   catGroup = new THREE.Group();
@@ -1015,9 +1027,18 @@ let lampShade, catGroup;
     ear.position.set(2.2+x,y,z+.1); catGroup.add(ear);
   });
   const tail = new THREE.Mesh(new THREE.TorusGeometry(1.6,.35,6,14,Math.PI*1.3), fur);
-  tail.position.set(-2,-.2,0); tail.rotation.set(Math.PI/2,0,.6); catGroup.add(tail);
+  tail.position.set(-2,-.2,0); tail.rotation.set(Math.PI/2,0,.6); catGroup.add(tail); catTail=tail;
   catGroup.position.set(-11,-2.1,10); catGroup.rotation.y=-.6;
   catGroup.children.forEach(c=>c.castShadow=true); scene.add(catGroup);
+
+  // a moth drifting lazily through the studio light
+  moth = new THREE.Group();
+  const wingMat = new THREE.MeshStandardMaterial({color:0xf0d8a0, roughness:.7, side:THREE.DoubleSide, emissive:0x4a3410, emissiveIntensity:.35});
+  const wingGeo = new THREE.CircleGeometry(.62, 8);
+  const wL=new THREE.Mesh(wingGeo,wingMat); wL.position.x=-.3;
+  const wR=new THREE.Mesh(wingGeo,wingMat); wR.position.x=.3;
+  moth.add(wL); moth.add(wR); moth.userData={wL,wR};
+  scene.add(moth);
 }
 
 /* the kiln — a brick beast in the corner */
@@ -2049,7 +2070,74 @@ const SHOP = [
   {id:'bats', e:'🪵', n:'Throwing Bats',  d:'Steadier throwing — the walls wobble less.',                   cost:90},
   {id:'vent', e:'🌬️', n:'Kiln Vent',     d:'Even bisque heat — far fewer steam and bubble bursts.',        cost:130},
   {id:'lib',  e:'🎨', n:'Glaze Library',  d:'A wider palette — four glaze colours offered at the tub.',     cost:110},
+  {id:'bigkiln', e:'🏛️', n:'Bigger Kiln', d:'A larger kiln — throw genuinely bigger pieces, taller and wider.', cost:170},
 ];
+function curMaxH(){ return ownsUpgrade('bigkiln')? 33 : MAX_H; }   // bigger kiln raises the size cap
+function curMaxR(){ return ownsUpgrade('bigkiln')? 13 : 11; }
+function applyKilnSize(){ if(typeof kilnG!=='undefined') kilnG.scale.setScalar(ownsUpgrade('bigkiln')? 1.32 : 1); }
+
+/* ---------------- studio backgrounds (buy with coins or earn from challenges) ---------------- */
+const BACKGROUNDS = [
+  {id:'river',   n:'River Studio', sw:'#8a5a3a', bg:0x241419, fog:0x241419, key:0xffe0b8, keyI:2.6, amb:0x6a4c40, ambI:.8,  rim:0xffc890},
+  {id:'night',   n:'Night Studio', sw:'#3a4a70', cost:80,  bg:0x0d1018, fog:0x0d1018, key:0x9ab0d0, keyI:1.7, amb:0x2a3a52, ambI:.9,  rim:0x6a80c0},
+  {id:'autumn',  n:'Autumn',       sw:'#c06a2a', cost:90,  bg:0x2a1a12, fog:0x3a2416, key:0xffb060, keyI:2.8, amb:0x6a3c28, ambI:.9,  rim:0xff9a50},
+  {id:'seaside', n:'Seaside',      sw:'#3a9ab0', cost:120, bg:0x16303a, fog:0x1e4048, key:0xd8f0ff, keyI:2.7, amb:0x3a6a70, ambI:.9,  rim:0x9ad0e0},
+  {id:'snow',    n:'Snowfall',     sw:'#c8d4ee', earn:'challenge', bg:0x2a3040, fog:0x3a4458, key:0xeef2ff, keyI:2.4, amb:0x5a6a80, ambI:1.0, rim:0xc0d0f0},
+];
+function loadBgState(){ try{ const o=JSON.parse(localStorage.getItem('mudember_bg')||'{}');
+  return {owned:Object.assign({river:true}, o.owned||{}), active:o.active||'river'}; }
+  catch(e){ return {owned:{river:true}, active:'river'}; } }
+let BGSTATE = loadBgState();
+function saveBgState(){ localStorage.setItem('mudember_bg', JSON.stringify(BGSTATE)); }
+function ownsBg(id){ return !!BGSTATE.owned[id]; }
+function setBackground(id){
+  const b=BACKGROUNDS.find(x=>x.id===id); if(!b) return;
+  BGSTATE.active=id; saveBgState();
+  if(scene.background) scene.background.setHex(b.bg);
+  if(scene.fog) scene.fog.color.setHex(b.fog);
+  key.color.setHex(b.key); key.intensity=b.keyI;
+  amb.color.setHex(b.amb); amb.intensity=b.ambI;
+  rim.color.setHex(b.rim);
+}
+function buyBg(id){ const b=BACKGROUNDS.find(x=>x.id===id);
+  if(!b || ownsBg(id) || !b.cost || G.coins<b.cost) return false;
+  G.coins-=b.cost; BGSTATE.owned[id]=true; saveBgState(); saveCoins(); return true; }
+function grantBg(id){ if(BACKGROUNDS.some(b=>b.id===id) && !ownsBg(id)){ BGSTATE.owned[id]=true; saveBgState(); return true; } return false; }
+
+/* ---------------- challenges: tougher, star-gated creation goals ---------------- */
+const CHALLENGES = [
+  {id:'c_raku',   n:'Smoke & Fire',     d:'A raku-fired piece, 3★ or better',  pay:55,  rep:2, check:d=>d.atmos==='raku' && (d.stars||0)>=3},
+  {id:'c_deco',   n:'Fine Brushwork',   d:'A decorated piece at 4★',           pay:60,  rep:2, check:d=>d.deco && d.deco.motif && d.deco.motif!=='none' && (d.stars||0)>=4},
+  {id:'c_big',    n:'Grand Scale',      d:'A large piece (tall), 3★+',         pay:65,  rep:2, check:d=>(d.h||0)>=26 && (d.stars||0)>=3},
+  {id:'c_lustre', n:'Gilded',           d:'A gold-lustre piece at 4★',         pay:80,  rep:3, check:d=>d.lustre && (d.stars||0)>=4},
+  {id:'c_teapot', n:'The Perfect Pour', d:'A teapot at 4★ — earns the Snowfall studio', pay:90, rep:3, reward:{bg:'snow'}, check:d=>d.kind==='teapot' && (d.stars||0)>=4},
+  {id:'c_master', n:'Masterwork',       d:'Any piece at a full 5★',            pay:120, rep:5, check:d=>(d.stars||0)>=5},
+];
+function checkChallenges(d){
+  if(!d) return [];
+  if(!DEX.chalDone) DEX.chalDone={};
+  const awarded=[];
+  CHALLENGES.forEach(c=>{ if(!DEX.chalDone[c.id] && c.check(d)){
+    DEX.chalDone[c.id]=true;
+    if(c.pay) G.coins+=c.pay;
+    DEX.reputation=(DEX.reputation||0)+(c.rep||0);
+    if(c.reward && c.reward.bg) grantBg(c.reward.bg);
+    awarded.push(c);
+  }});
+  if(awarded.length){ saveDex(); saveCoins(); applyDecor(); }
+  return awarded;
+}
+/* studio reputation earns cosmetic decor — more plants stir into the room */
+let decorObjs=[];
+function applyDecor(){
+  const rep=DEX.reputation||0;
+  const want = rep>=8?2 : rep>=3?1 : 0;
+  const spots=[[-18,-1.3,-16],[20.5,-1.3,7]];
+  while(decorObjs.length<want && studioPlant){
+    const p=studioPlant.clone(); p.position.set(spots[decorObjs.length][0], spots[decorObjs.length][1], spots[decorObjs.length][2]);
+    p.scale.setScalar(.85+decorObjs.length*.1); scene.add(p); decorObjs.push(p);
+  }
+}
 function loadShop(){ try{ return JSON.parse(localStorage.getItem('mudember_shop')||'{}'); }catch(e){ return {}; } }
 let SHOPOWN = loadShop();
 function ownsUpgrade(id){ return !!SHOPOWN[id]; }
@@ -2057,7 +2145,9 @@ function saveShop(){ localStorage.setItem('mudember_shop', JSON.stringify(SHOPOW
 function buyUpgrade(id){
   const it=SHOP.find(s=>s.id===id);
   if(!it || ownsUpgrade(id) || G.coins<it.cost) return false;
-  G.coins-=it.cost; SHOPOWN[id]=true; saveShop(); saveCoins(); return true;
+  G.coins-=it.cost; SHOPOWN[id]=true; saveShop(); saveCoins();
+  if(id==='bigkiln') applyKilnSize();
+  return true;
 }
 
 /* kiln cinematic timeline (seconds) */
@@ -2114,7 +2204,7 @@ function guide(html){
   g.style.display='block'; g.innerHTML=html;
 }
 
-const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','journalScreen','shopScreen','cloudScreen','musicScreen','kilnLoadScreen'];
+const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','journalScreen','shopScreen','challengeScreen','cloudScreen','musicScreen','kilnLoadScreen'];
 function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
 
 const STAGE_INFO = {
@@ -2877,6 +2967,7 @@ function applyGlazeFire(){
   G._pendingUnlock = UNLOCKS[G.fired] || null;      // crossing a threshold reveals a new system
   addToShelf();
   G._pendingMilestones = checkMilestones();          // award any newly-earned goals
+  G._pendingChallenges = checkChallenges(G.lastPieceData || (shelfPieces[0] && shelfPieces[0].data));
   G.lastPieceData = shelfPieces[0].data;          // reuse the exact same piece on the hero display
   G.lastStars = G.lastPieceData.stars;
   rows.push(['Rating', `<span style="color:#ffcf4a;letter-spacing:2px">${starStr(G.lastStars)}</span> ${G.lastStars.toFixed(1)}`]);
@@ -2902,8 +2993,14 @@ function showResult(title, flavor, rows, survived=false){
          <div style="font-weight:bold">🏅 GOAL — ${m.n}${m.pay?` · +${m.pay}c`:''}</div>
          <div style="font-size:12px;opacity:.9;margin-top:2px">${m.d}</div></div>`).join('');
   }
+  if(survived && G._pendingChallenges && G._pendingChallenges.length){
+    noticeHtml += G._pendingChallenges.map(c=>
+      `<div style="margin:4px 0 8px;padding:8px 12px;border:1.5px solid #c8a0f0;border-radius:11px;background:rgba(180,140,240,.14);color:#e2d0f8;text-align:center">
+         <div style="font-weight:bold">🎯 CHALLENGE — ${c.n}${c.pay?` · +${c.pay}c`:''}${c.rep?` · +${c.rep}★ rep`:''}</div>
+         <div style="font-size:12px;opacity:.9;margin-top:2px">${c.reward&&c.reward.bg?'unlocked a new studio!':c.d}</div></div>`).join('');
+  }
   $('resRows').innerHTML = noticeHtml + rows.map(r=>`<div>${r[0]}<b>${r[1]}</b></div>`).join('');
-  if(survived){ G._pendingUnlock = null; G._pendingMilestones = null; }
+  if(survived){ G._pendingUnlock = null; G._pendingMilestones = null; G._pendingChallenges = null; }
   G.lastSurvived = survived;
   G.lastTitle = title;
   $('nextBtn').textContent = survived ? 'SEE IT →' : 'BACK TO THE WHEEL →';
@@ -2947,6 +3044,7 @@ function enterDisplay(){
   $('displayCard').innerHTML = `<div class="dTitle">${G.lastTitle||'Your piece'}</div><div class="dSub">${sub}</div>${st}`;
   framePiece();
   banner('here it is ✨', 1.4);
+  hint('<b>Drag</b> to turn it in the light — tip it up to read the mark on the foot. <b>Pinch</b> to zoom.', 6);
 }
 window.__enterDisplay = enterDisplay;
 $('dispNew').onclick = ()=>{ $('displayBar').style.display='none'; $('displayCard').style.display='none'; enterStudio(); };
@@ -3039,7 +3137,7 @@ $('galleryBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openGallery(
 
 /* ---- Journal: goals + collection ---- */
 function renderJournal(){
-  $('journalTag').textContent = `${G.fired} fired · ${G.coins}c · best ${(DEX.bestStars||0).toFixed(1)}★`;
+  $('journalTag').textContent = `${G.fired} fired · ${G.coins}c · best ${(DEX.bestStars||0).toFixed(1)}★ · ${DEX.reputation||0}★ rep`;
   const done=MILESTONES.filter(m=>DEX.claimed[m.id]).length;
   let h=`<div class="jSection">GOALS · ${done}/${MILESTONES.length}</div>`;
   h+=MILESTONES.map(m=>{ const got=!!DEX.claimed[m.id];
@@ -3059,23 +3157,56 @@ $('journalClose').onclick = ()=>{ G.state='title'; showScreen('titleScreen'); };
 /* ---- Shop: spend coins on upgrades ---- */
 function renderShop(){
   $('shopTag').textContent = `${G.coins}c to spend`;
-  $('shopBody').innerHTML = SHOP.map(it=>{
+  let h = `<div class="jSection">STUDIO UPGRADES</div>`;
+  h += SHOP.map(it=>{
     const owned=ownsUpgrade(it.id), afford=G.coins>=it.cost;
     const btn = owned? `<span class="jPay">OWNED ✓</span>`
       : `<button class="siBuy" data-id="${it.id}" ${afford?'':'disabled'}>${it.cost}c</button>`;
     return `<div class="shopItem ${owned?'owned':''}"><div class="siTop"><span class="siName">${it.e} ${it.n}</span>${btn}</div><div class="siDesc">${it.d}</div></div>`;
   }).join('');
-  $('shopBody').querySelectorAll('.siBuy').forEach(b=>b.onclick=()=>{
+  h += `<div class="jSection">STUDIO BACKGROUNDS</div>`;
+  h += BACKGROUNDS.map(b=>{
+    const owned=ownsBg(b.id), active=BGSTATE.active===b.id;
+    let action;
+    if(active) action=`<span class="jPay">IN USE</span>`;
+    else if(owned) action=`<button class="siBuy" data-usebg="${b.id}">USE</button>`;
+    else if(b.cost) action=`<button class="siBuy" data-buybg="${b.id}" ${G.coins>=b.cost?'':'disabled'}>${b.cost}c</button>`;
+    else action=`<span style="font-size:11px;opacity:.7;white-space:nowrap">earn via challenge</span>`;
+    return `<div class="shopItem ${owned?'owned':''}"><div class="siTop"><span class="siName"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${b.sw};vertical-align:middle;margin-right:6px"></span>${b.n}</span>${action}</div></div>`;
+  }).join('');
+  $('shopBody').innerHTML = h;
+  $('shopBody').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{
     if(buyUpgrade(b.dataset.id)){ AudioEng.chime(1); banner('purchased — '+SHOP.find(s=>s.id===b.dataset.id).n, 1.6); renderShop(); }
-    else { banner('not enough coins', 1.3, true); }
+    else banner('not enough coins', 1.3, true);
+  });
+  $('shopBody').querySelectorAll('[data-buybg]').forEach(b=>b.onclick=()=>{
+    if(buyBg(b.dataset.buybg)){ AudioEng.chime(1); setBackground(b.dataset.buybg); banner('new studio — '+BACKGROUNDS.find(x=>x.id===b.dataset.buybg).n, 1.8); renderShop(); }
+    else banner('not enough coins', 1.3, true);
+  });
+  $('shopBody').querySelectorAll('[data-usebg]').forEach(b=>b.onclick=()=>{
+    setBackground(b.dataset.usebg); AudioEng.blip(560,.08,'triangle',.08); renderShop();
   });
 }
 function openShop(){ G.state='shop'; setPlayHUD(false); $('muteBtn').style.display='flex'; $('gearBtn').style.display='none'; renderShop(); showScreen('shopScreen'); }
 $('shopBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openShop(); };
 $('shopClose').onclick = ()=>{ G.state='title'; $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : ''; showScreen('titleScreen'); };
 
+/* ---- Challenges: tougher star-gated goals ---- */
+function renderChallenges(){
+  $('challengeTag').textContent = `${DEX.reputation||0}★ studio reputation · ${G.coins}c`;
+  const done=CHALLENGES.filter(c=>DEX.chalDone&&DEX.chalDone[c.id]).length;
+  let h=`<div class="jSection">CHALLENGES · ${done}/${CHALLENGES.length}</div>`;
+  h+=CHALLENGES.map(c=>{ const got=DEX.chalDone&&DEX.chalDone[c.id];
+    const rw=[c.pay?c.pay+'c':'', c.rep?c.rep+'★':'', (c.reward&&c.reward.bg)?'🎨':''].filter(Boolean).join(' · ');
+    return `<div class="jRow ${got?'jDone':''}"><span>${got?'✅':'🎯'} <b>${c.n}</b> — ${c.d}</span><span class="jPay">${rw}</span></div>`; }).join('');
+  $('challengeBody').innerHTML=h;
+}
+function openChallenges(){ G.state='challenges'; setPlayHUD(false); $('muteBtn').style.display='flex'; $('gearBtn').style.display='none'; renderChallenges(); showScreen('challengeScreen'); }
+$('challengeBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openChallenges(); };
+$('challengeClose').onclick = ()=>{ G.state='title'; showScreen('titleScreen'); };
+
 /* ---------------- cloud save ---------------- */
-const SYNC_KEYS = ['mudember_shelf','mudember_fired','mudember_coins','mudember_orders','mudember_clay','mudember_dex','mudember_shop'];
+const SYNC_KEYS = ['mudember_shelf','mudember_fired','mudember_coins','mudember_orders','mudember_clay','mudember_dex','mudember_shop','mudember_bg','mudember_chal'];
 function genCode(){
   const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', buf=new Uint8Array(12);
   (crypto.getRandomValues?crypto.getRandomValues(buf):buf.forEach((_,i)=>buf[i]=Math.floor(Math.random()*256)));
@@ -3089,7 +3220,9 @@ function applySave(o){
   // rebuild in-memory state from the freshly-written storage
   G.fired = +(localStorage.getItem('mudember_fired')||0);
   G.coins = +(localStorage.getItem('mudember_coins')||0);
-  DEX = loadDex(); SHOPOWN = loadShop();
+  DEX = loadDex(); SHOPOWN = loadShop(); applyKilnSize();
+  BGSTATE = loadBgState(); setBackground(BGSTATE.active);
+  decorObjs.forEach(o=>scene.remove(o)); decorObjs.length=0; applyDecor();
   orders=[]; loadOrders();
   const sc = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay')); if(sc) pot.clay=sc;
   shelfPieces.forEach(p=>{ scene.remove(p.mesh); disposePiece(p.mesh); });
@@ -3301,6 +3434,19 @@ $('kilnLoadFire').onclick = ()=>{ G.atmosphere=SET.atmos; G.stilt=(SET.stilt==='
 
 /* ---------------- input ---------------- */
 let touching=false, lastX=0, lastY=0;
+/* multi-touch: one finger shapes, two fingers orbit + pinch-zoom the camera.
+   On the finished-piece display, one finger orbits (nothing is being shaped). */
+const ptrs = new Map();
+let orbitDrag=false, pinchDist=0;
+const ORBIT_SENS=.006;
+function orbitStages(){ return G.state==='display'||G.state==='photo'; }   // one-finger orbit here
+function ptrMid(){ let x=0,y=0,n=0; ptrs.forEach(p=>{x+=p.x;y+=p.y;n++;}); return n?{x:x/n,y:y/n}:{x:0,y:0}; }
+function ptrDist(){ const a=[...ptrs.values()]; return a.length>=2? Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y):0; }
+function applyOrbitDrag(px,py){
+  orbit.az -= (px-lastX)*ORBIT_SENS;
+  orbit.el = clamp(orbit.el - (py-lastY)*ORBIT_SENS, -2.2, 1.5);   // drag up → see the top; drag down → underneath
+  lastX=px; lastY=py;
+}
 const projV = new THREE.Vector3();
 function potScreenY(worldY){
   projV.set(0,worldY,0).project(camera);
@@ -3308,6 +3454,10 @@ function potScreenY(worldY){
 }
 renderer.domElement.addEventListener('pointerdown', e=>{
   AudioEng.init(); AudioEng.resume();
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(ptrs.size>=2){ touching=false; orbitDrag=false; pinchDist=ptrDist(); const m=ptrMid(); lastX=m.x; lastY=m.y; return; }
+  // secondary mouse button, or the display view → free orbit with one pointer
+  if(e.button===2 || e.button===1 || orbitStages()){ orbitDrag=true; lastX=e.clientX; lastY=e.clientY; return; }
   touching=true; lastX=e.clientX; lastY=e.clientY;
   if(G.state==='glazeDip'){ G._dipLayer=null; if(pot.glazeMethod==='brush') brushAt(e.clientY); }   // new coat session
   if(G.state==='wedge'){
@@ -3321,15 +3471,29 @@ renderer.domElement.addEventListener('pointerdown', e=>{
     }
   }
 });
-addEventListener('pointerup', ()=>{ touching=false; });
-addEventListener('pointercancel', ()=>{ touching=false; });
+function endPointer(e){ if(e && e.pointerId!=null) ptrs.delete(e.pointerId);
+  if(ptrs.size<2) pinchDist=0;
+  if(ptrs.size===0){ touching=false; orbitDrag=false; } }
+addEventListener('pointerup', endPointer);
+addEventListener('pointercancel', endPointer);
+renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel', e=>{ e.preventDefault();
+  orbit.zoom = clamp(orbit.zoom*(1+Math.sign(e.deltaY)*.08), ORBIT_ZMIN, ORBIT_ZMAX); }, {passive:false});
 addEventListener('pointermove', e=>{
+  if(ptrs.has(e.pointerId)) ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(ptrs.size>=2){                       // two-finger orbit + pinch-zoom
+    const m=ptrMid(); applyOrbitDrag(m.x, m.y);
+    const d=ptrDist();
+    if(pinchDist>0 && d>0) orbit.zoom = clamp(orbit.zoom*(pinchDist/d), ORBIT_ZMIN, ORBIT_ZMAX);
+    pinchDist=d; return;
+  }
+  if(orbitDrag){ applyOrbitDrag(e.clientX, e.clientY); return; }
   const dx = e.clientX-lastX, dy = e.clientY-lastY;
   lastX=e.clientX; lastY=e.clientY;
   if(!touching) return;
 
   if(G.state==='glazeDip'){
-    if(pot.glazeMethod==='dip') pot.y = clamp(pot.y - dy*.06, LIQ_Y-MAX_H-3, 14);
+    if(pot.glazeMethod==='dip') pot.y = clamp(pot.y - dy*.06, LIQ_Y-curMaxH()-3, 14);
     else if(pot.glazeMethod==='brush') brushAt(e.clientY);
     return;
   }
@@ -3344,7 +3508,7 @@ addEventListener('pointermove', e=>{
 
   if(fr > .55 && Math.abs(dy) > Math.abs(dx)*1.15){
     const oldH=pot.h;
-    pot.h = clamp(pot.h - dy*.035*workability*scl, MIN_H, MAX_H);
+    pot.h = clamp(pot.h - dy*.035*workability*scl, MIN_H, curMaxH());
     if(pot.h!==oldH){
       const f=oldH/pot.h;
       for(let i=0;i<RINGS;i++){
@@ -3363,7 +3527,7 @@ addEventListener('pointermove', e=>{
       const w = Math.exp(-((i-i0)**2)/(2*2.4*2.4));
       if(w<.02) continue;
       const old=pot.r[i];
-      pot.r[i]=clamp(pot.r[i]+dr*w, .9, 11);
+      pot.r[i]=clamp(pot.r[i]+dr*w, .9, curMaxR());
       pot.t[i]=clamp(pot.t[i]*old/pot.r[i], .12, 3);
       pot.shock[i]=Math.min(pot.shock[i]+Math.abs(dr*w)*1.3*dryFac, 1.3);
     }
@@ -3646,7 +3810,17 @@ function tick(now){
     if(lampShade) lampShade.material.emissiveIntensity = .4*flick;
   }
   if(catGroup) catGroup.scale.set(1, 1+Math.sin(now*.0022)*.03, 1);   // slow breath
-  if(displayMesh && (G.state==='display'||G.state==='photo')) displayMesh.rotation.y = spin;
+  if(catTail) catTail.rotation.z = .6 + Math.sin(now*.0013)*.18;        // a lazy tail flick
+  if(studioPlant) studioPlant.rotation.z = Math.sin(now*.0008)*.045;    // leaves stir in the draught
+  if(moth){                                                            // the moth drifts a lazy figure-eight through the light
+    const t=now*.00042;
+    moth.position.set(6+Math.sin(t*1.3)*11, 8+Math.sin(t*2.1)*4.5+Math.sin(t*.7)*2.2, 8+Math.cos(t)*9);
+    const flap=Math.sin(now*.019)*.95;
+    moth.userData.wL.rotation.y=flap; moth.userData.wR.rotation.y=-flap;
+    moth.rotation.y = Math.atan2(Math.cos(t*1.3),-Math.sin(t))*.5;
+    moth.visible = !inKiln && G.state!=='display' && G.state!=='photo';
+  }
+  if(displayMesh && (G.state==='display'||G.state==='photo') && ptrs.size===0) displayMesh.rotation.y = spin;   // hold still while you orbit it
 
   wheel.rotation.y = spin;
 
@@ -3656,10 +3830,19 @@ function tick(now){
   camLook.lerp(camLookT, camEase);
   const swayOn = SET.sway!=='off';
   const shake = pot.wobAmp*.12;
+  // apply the player's free-orbit offset around the look point (spherical → top & bottom reachable)
+  _camOff.copy(camPos).sub(camLook);
+  const baseLen = Math.max(_camOff.length(), .001);
+  const r = baseLen*orbit.zoom;
+  const theta = Math.atan2(_camOff.x, _camOff.z) + orbit.az;
+  let phi = Math.acos(clamp(_camOff.y/baseLen,-1,1)) - orbit.el;
+  phi = clamp(phi, .12, Math.PI-.12);
+  const sinP = Math.sin(phi);
+  const swayX = swayOn? Math.sin(now*.0006)*.6:0, swayY = swayOn? Math.cos(now*.0004)*.4:0;
   camera.position.set(
-    camPos.x + (swayOn? Math.sin(now*.0006)*.6:0) + rnd(-shake,shake),
-    camPos.y + (swayOn? Math.cos(now*.0004)*.4:0) + rnd(-shake,shake),
-    camPos.z);
+    camLook.x + r*sinP*Math.sin(theta) + swayX + rnd(-shake,shake),
+    camLook.y + r*Math.cos(phi)        + swayY + rnd(-shake,shake),
+    camLook.z + r*sinP*Math.cos(theta));
   camera.lookAt(tmpV.copy(camLook));
 
   if(crackSprite.visible){
@@ -3677,6 +3860,9 @@ function tick(now){
 /* ---------------- boot ---------------- */
 loadOrders();
 loadShelf();
+applyKilnSize();
+setBackground(BGSTATE.active);
+applyDecor();
 $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
 showScreen('titleScreen');
 $('muteBtn').style.display='flex';
