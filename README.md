@@ -33,6 +33,10 @@ CDN). No build step — open `index.html`.
 - Five clay bodies (red clay, stoneware, black clay and porcelain unlock as you fire
   pieces), a full brick-kiln firing cinematic, and a living studio (hanging lamp,
   potted plant, a napping cat).
+- Cinematic rendering on HIGH graphics: bloom, a warm filmic grade + vignette,
+  depth-of-field on the finished-piece shots, and a warm studio environment for
+  believable glaze reflections. (Switch to LOW graphics in Settings for the fast
+  path on low-end devices.)
 - Every finished piece is shown off on a rotating display, saved to your persistent
   **My Gallery**, and lined up on the studio shelf. Photo mode exports a PNG.
 - **Music player** with four tracks (one pre-rendered, three generative) — skip,

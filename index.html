@@ -350,6 +350,12 @@
 <script type="module">
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 /* ============================================================
    Mud & Ember — a free-build pottery studio with the full
@@ -646,7 +652,23 @@ scene.background = BG.clone();
 scene.fog = new THREE.Fog(BG.clone(), 60, 150);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+// warm studio environment so glossy glaze catches a believable window + lamp reflection
+function makeStudioEnv(){
+  const c=document.createElement('canvas'); c.width=1024; c.height=512;
+  const g=c.getContext('2d');
+  const grd=g.createLinearGradient(0,0,0,512);
+  grd.addColorStop(0,'#2c2334'); grd.addColorStop(.46,'#3c2d29'); grd.addColorStop(.64,'#4c3728'); grd.addColorStop(1,'#140e0b');
+  g.fillStyle=grd; g.fillRect(0,0,1024,512);
+  const win=g.createRadialGradient(210,175,8,210,175,230);
+  win.addColorStop(0,'rgba(255,235,196,1)'); win.addColorStop(.5,'rgba(255,205,155,.45)'); win.addColorStop(1,'rgba(255,205,155,0)');
+  g.fillStyle=win; g.fillRect(0,0,1024,512);
+  const lamp=g.createRadialGradient(770,150,6,770,150,130);
+  lamp.addColorStop(0,'rgba(255,200,120,.9)'); lamp.addColorStop(1,'rgba(255,200,120,0)');
+  g.fillStyle=lamp; g.fillRect(0,0,1024,512);
+  const t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+scene.environment = pmrem.fromEquirectangular(makeStudioEnv()).texture;
 
 const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, .1, 300);
 /* eased camera rig: each stage sets a target; tick() glides toward it */
@@ -672,13 +694,55 @@ const shelfLight = new THREE.PointLight(0xffc890, 22, 30, 1.6); shelfLight.posit
 // a warm hanging lamp over the wheel that gently flickers — the studio's heartbeat
 const lampLight = new THREE.PointLight(0xffb060, 26, 42, 1.5); lampLight.position.set(2, 24, 12); scene.add(lampLight);
 
+/* ---- post-processing: bloom, filmic grade + vignette, DoF on hero shots ---- */
+const GradeShader = {
+  uniforms:{ tDiffuse:{value:null}, vig:{value:1.0} },
+  vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader:`
+    uniform sampler2D tDiffuse; uniform float vig; varying vec2 vUv;
+    void main(){
+      vec4 c=texture2D(tDiffuse,vUv);
+      c.rgb = mix(c.rgb, c.rgb*c.rgb*(3.0-2.0*c.rgb), 0.14);   // gentle filmic s-curve
+      c.rgb *= vec3(1.035,1.005,0.965);                        // warm studio grade
+      vec2 d=vUv-0.5; float v=smoothstep(0.95,0.32,length(d)*1.3);
+      c.rgb *= mix(1.0, v, vig*0.55);                          // vignette
+      gl_FragColor=c;
+    }`
+};
+let composer=null, bloomPass=null, bokehPass=null, usePost=false;
+function buildComposer(){
+  if(composer) return;
+  const rt=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{type:THREE.HalfFloatType, samples:2});
+  composer=new EffectComposer(renderer, rt);
+  composer.setPixelRatio(Math.min(devicePixelRatio,2));
+  composer.setSize(innerWidth,innerHeight);
+  composer.addPass(new RenderPass(scene,camera));
+  bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), .5, .6, .82);
+  composer.addPass(bloomPass);
+  bokehPass=new BokehPass(scene,camera,{focus:40, aperture:.00045, maxblur:.006});
+  bokehPass.enabled=false; composer.addPass(bokehPass);
+  composer.addPass(new OutputPass());
+  composer.addPass(new ShaderPass(GradeShader));
+}
 function applyGfx(){
   const high = SET.gfx!=='low';
   renderer.setPixelRatio(high? Math.min(devicePixelRatio,2) : 1);
   renderer.shadowMap.enabled = high;
   key.castShadow = high;
+  usePost = high;
+  if(high) buildComposer();
 }
 applyGfx();
+function renderFrame(){
+  if(usePost && composer){
+    const dof = (G.state==='display'||G.state==='photo');   // shallow DoF only on product shots
+    if(bokehPass && bokehPass.enabled!==dof) bokehPass.enabled=dof;
+    if(dof && bokehPass) bokehPass.uniforms['focus'].value = camPos.distanceTo(camLook);
+    composer.render();
+  } else {
+    renderer.render(scene,camera);
+  }
+}
 
 /* studio backdrop */
 {
@@ -2110,7 +2174,7 @@ $('dispPhoto').onclick = ()=>{
 
 /* ---------------- photo mode ---------------- */
 $('photoSave').onclick = ()=>{
-  renderer.render(scene, camera);
+  renderFrame();
   const a=document.createElement('a');
   a.href=renderer.domElement.toDataURL('image/png');
   a.download='mud-and-ember.png';
@@ -2459,6 +2523,8 @@ addEventListener('pointermove', e=>{
 addEventListener('resize', ()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  if(composer) composer.setSize(innerWidth,innerHeight);
+  if(bloomPass) bloomPass.setSize(innerWidth,innerHeight);
 });
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden && AudioEng.ctx) AudioEng.ctx.suspend(); else AudioEng.resume();
@@ -2714,7 +2780,7 @@ function tick(now){
   }
 
   if(potMesh.visible) rebuildPot();
-  renderer.render(scene, camera);
+  renderFrame();
 }
 
 /* ---------------- boot ---------------- */
