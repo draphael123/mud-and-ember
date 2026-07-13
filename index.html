@@ -36,16 +36,18 @@
   #moistFill { background:linear-gradient(90deg,#7a4a2c,#3f8fd0,#7ec8ff); width:100%; }
   #stabFill  { background:linear-gradient(90deg,#3ad07a,#ffd24a,#ff5a3a); width:5%; }
 
-  /* pill selectors: glaze method (dip/pour/brush/spray) + attached parts + decoration */
-  #glazeMethods, #partRow { position:absolute; bottom:calc(158px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  /* pill selectors: glaze method (dip/pour/brush/spray) + leather-hard tool toggle + parts/deco */
+  #glazeMethods, #toolModeRow { position:absolute; bottom:calc(158px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     display:none; gap:7px; pointer-events:none; }
-  #decoRow { position:absolute; bottom:calc(212px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  /* one leather-hard tool's options at a time, in a single slot above the action buttons */
+  #partRow, #decoRow { position:absolute; bottom:calc(104px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     display:none; gap:6px; pointer-events:none; flex-wrap:wrap; justify-content:center; max-width:94vw; }
-  #glazeMethods .gm, #partRow .gm, #decoRow .gm { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:0;
+  #glazeMethods .gm, #partRow .gm, #decoRow .gm, #toolModeRow .gm { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:0;
     border:1.5px solid rgba(190,120,80,.5); border-radius:11px; padding:4px 8px; font-size:10px; letter-spacing:.3px;
     background:linear-gradient(180deg,rgba(44,27,22,.88),rgba(24,14,11,.92)); color:#ffe9c8; font-family:inherit; font-weight:bold; }
-  #glazeMethods .gm .ge, #partRow .gm .ge, #decoRow .gm .ge { font-size:15px; }
-  #glazeMethods .gm.on, #partRow .gm.on, #decoRow .gm.on { border-color:#ffd9a0; color:#ffd9a0; box-shadow:0 0 10px rgba(255,180,110,.4); transform:translateY(-1px); }
+  #glazeMethods .gm .ge, #partRow .gm .ge, #decoRow .gm .ge, #toolModeRow .gm .ge { font-size:15px; }
+  #toolModeRow .gm { border-color:rgba(255,200,140,.4); }
+  #glazeMethods .gm.on, #partRow .gm.on, #decoRow .gm.on, #toolModeRow .gm.on { border-color:#ffd9a0; color:#ffd9a0; box-shadow:0 0 10px rgba(255,180,110,.4); transform:translateY(-1px); }
 
   /* selection chips (clay bodies at wedge, glazes at dip) */
   #chipRow { position:absolute; bottom:calc(104px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
@@ -122,6 +124,26 @@
   .galCard .gName { font-size:12px; font-weight:bold; color:#ffd9a0; margin-top:3px; }
   .galCard .gMeta { font-size:10px; opacity:.75; margin-top:2px; letter-spacing:.3px; }
   #galleryEmpty { margin-top:28px; font-size:14px; opacity:.8; line-height:1.6; }
+
+  /* journal (goals + collection) & shop */
+  #journalBody, #shopBody { width:100%; max-width:360px; margin-top:12px; overflow-y:auto; max-height:64vh; padding:2px; text-align:left; }
+  .jSection { font-size:11px; letter-spacing:2px; opacity:.7; margin:14px 4px 6px; }
+  .jRow { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:8px 11px; margin-top:6px;
+    background:linear-gradient(180deg,rgba(44,27,22,.85),rgba(24,14,11,.9)); border:1.5px solid #5a3a28; border-radius:10px; font-size:13px; }
+  .jRow.jDone { border-color:#6a9a6e; background:linear-gradient(180deg,rgba(40,60,42,.6),rgba(20,32,22,.7)); }
+  .jRow .jPay { color:#ffcf6a; font-weight:bold; white-space:nowrap; }
+  .jChips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 4px 2px; }
+  .jChip { font-size:11px; padding:4px 9px; border-radius:20px; border:1.5px solid #5a3a28; opacity:.5; letter-spacing:.5px; }
+  .jChip.on { opacity:1; border-color:#ffd9a0; color:#ffd9a0; }
+  .shopItem { padding:10px 12px; margin-top:8px; background:linear-gradient(180deg,rgba(44,27,22,.85),rgba(24,14,11,.9));
+    border:1.5px solid #5a3a28; border-radius:11px; }
+  .shopItem .siTop { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .shopItem .siName { font-weight:bold; color:#ffe9c8; }
+  .shopItem .siDesc { font-size:12px; opacity:.85; margin-top:3px; line-height:1.4; }
+  .shopItem .siBuy { pointer-events:auto; border:2px solid #8a5a3a; border-radius:9px; color:#ffe9c8; font-weight:bold; font-family:inherit;
+    background:linear-gradient(180deg,#5a3323,#3a1f15); padding:7px 13px; font-size:12px; white-space:nowrap; }
+  .shopItem .siBuy:disabled { opacity:.5; }
+  .shopItem.owned { border-color:#6a9a6e; }
 
   /* cloud save */
   #cloudCard .cloudInput { width:100%; padding:11px 12px; border-radius:9px; border:2px solid #6d4530;
@@ -239,6 +261,7 @@
     </div>
   </div>
 
+  <div id="toolModeRow"></div>
   <div id="decoRow"></div>
   <div id="glazeMethods"></div>
   <div id="partRow"></div>
@@ -292,6 +315,8 @@
     <div class="tag">a small pottery studio · wedge · throw · <i>gamble it in the kiln, twice</i></div>
     <button class="btn bigBtn" id="startBtn">OPEN THE STUDIO</button>
     <button class="btn bigBtn" id="galleryBtn" style="font-size:14px;padding:11px 30px;">🖼️ MY GALLERY</button>
+    <button class="btn bigBtn" id="journalBtn" style="font-size:14px;padding:11px 30px;">📖 JOURNAL</button>
+    <button class="btn bigBtn" id="shopBtn" style="font-size:14px;padding:11px 30px;">🛒 SHOP</button>
     <button class="btn bigBtn" id="cloudBtn" style="font-size:14px;padding:11px 30px;">☁️ CLOUD SAVE</button>
     <button class="btn bigBtn" id="musicTitleBtn" style="font-size:14px;padding:11px 30px;">🎵 MUSIC</button>
     <button class="btn bigBtn" id="introBtn" style="font-size:14px;padding:11px 30px;">↻ REPLAY INTRO</button>
@@ -375,7 +400,7 @@
         </div>
         <div style="font-size:11.5px;opacity:.82;margin-top:7px;text-align:left;line-height:1.4">A stilt lifts the foot so a running glaze can't weld the piece to the shelf.</div>
       </div>
-      <div class="setRow">
+      <div class="setRow" id="coldFinishRow">
         <div class="setLbl">COLD FINISHING</div>
         <div class="segs" id="grindSegs">
           <button class="seg on" data-v="asfired">AS-FIRED FOOT</button>
@@ -415,6 +440,20 @@
     <div class="tag" id="galleryTag">every piece that survived the kiln</div>
     <div id="galleryGrid"></div>
     <button class="btn bigBtn" id="galleryClose">← BACK</button>
+  </div>
+
+  <div class="screen" id="journalScreen">
+    <h2>📖 Potter's Journal</h2>
+    <div class="tag" id="journalTag"></div>
+    <div id="journalBody"></div>
+    <button class="btn bigBtn" id="journalClose">← BACK</button>
+  </div>
+
+  <div class="screen" id="shopScreen">
+    <h2>🛒 Studio Shop</h2>
+    <div class="tag" id="shopTag"></div>
+    <div id="shopBody"></div>
+    <button class="btn bigBtn" id="shopClose">← BACK</button>
   </div>
 
   <div class="screen" id="cloudScreen">
@@ -1305,6 +1344,7 @@ function computeStars(){
   if(pot.deco && pot.deco.motif!=='none') s += .25;      // decoration is craft too
   if(G.lustre) s += .4;                                   // a lustre pass is a rich, deliberate finish
   if(G.grind)  s += .2;                                   // a ground foot is proper craft
+  if(ownsUpgrade('wire')) s += .15;                       // cut-off wire = a cleaner foot
   if(G._fireCracked) s -= .8;
   if(pot.bisqueCracked) s -= .5;
   if(G._fireFlawless) s += .6;
@@ -1346,6 +1386,7 @@ function addToShelf(){
   shelfPieces.unshift({data:d, mesh:makePieceMesh(d), jx:rnd(-.6,.6), jr:rnd(Math.PI*2)});
   layoutShelf();
   saveShelf();
+  recordPiece(d);            // log it in the collection dex
 }
 
 /* ---------------- pot geometry ---------------- */
@@ -1666,7 +1707,7 @@ function computeInstability(){
   worst += clamp((topR-4.5)*.06,0,.35) * clamp((.5-minLow)/.5,0,1);
   worst *= 1 + clamp((pot.h-14)/22,0,.4);
   worst *= 1 + pot.offCenter*1.4;
-  return worst * diff().shock * pot.clay.shock;
+  return worst * diff().shock * pot.clay.shock * (ownsUpgrade('bats')?.85:1);   // throwing bats steady the walls
 }
 
 function startCollapse(){
@@ -1829,6 +1870,23 @@ const FORMS = [
   {key:'tumbler',n:'Tumbler',  e:'🥃', d:'wide, low, steady',     h:10, s:4.4, r:yn=>.85+.28*yn},
   {key:'amphora',n:'Amphora',  e:'⚱️', d:'the potter\'s test',    h:20, s:4.4, r:yn=>.35+.95*Math.sin(Math.pow(yn,.85)*2.9+.15)},
 ];
+
+/* ---------------- progressive unlocks (paces onboarding + gives a progression spine) ----------------
+   Everything keys off G.fired (total pieces fired, already persisted), so existing
+   players are grandfathered — nothing they've used is taken away. */
+const FORM_UNLOCK = { free:0, cup:0, bowl:0, mug:0, plate:2, tumbler:2, vase:3, jug:4, bottle:6, amphora:8 };
+const FEATURE_UNLOCK = { carve:1, glazeMethods:3, parts:4, deco:5, reduction:6, specialty:8 };
+const unlocked = key => G.fired >= (FEATURE_UNLOCK[key]||0);
+const formUnlocked = f => G.fired >= (FORM_UNLOCK[f.key]||0);
+const UNLOCKS = {   // a one-time celebratory notice shown the piece you cross the threshold
+  1:{t:'✏️ Carving', d:'At leather-hard you can now carve patterns into the walls.'},
+  2:{t:'🍽️ New forms', d:'Plate and Tumbler are on the noticeboard now.'},
+  3:{t:'🌊 Glazing techniques', d:'Pour, brush and spray — not just dip. And the Vase, a taller throw.'},
+  4:{t:'🫙 Handles, spouts & lids', d:'Attach parts at leather-hard: a cup + handle is a mug, a jug + spout a teapot. Plus the Jug.'},
+  5:{t:'🖌️ Painted decoration', d:'Underglaze, slip, sgraffito and stamping — decorate the surface.'},
+  6:{t:'🔥 Reduction firing', d:'A richer, riskier kiln atmosphere. Plus the Bottle.'},
+  8:{t:'🖤 Specialty firings', d:'Raku, wood and salt fires, plus cold finishing — grind the foot, add gold lustre. Plus the Amphora.'},
+};
 let ghostMesh = null;
 function buildGhost(f){
   if(ghostMesh){ scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh=null; }
@@ -1913,6 +1971,7 @@ const G = {
   state:'title', prevState:'title',
   kilnT:0, kilnKind:'bisque', kilnOutcome:null, kilnApplied:false,
   atmosphere:'oxidation', stilt:true, grind:false, lustre:false,
+  leatherMode:'carve',
   fired: +(localStorage.getItem('mudember_fired')||0),
   coins: +(localStorage.getItem('mudember_coins')||0),
   commission:null,
@@ -1926,7 +1985,7 @@ const ORDER_CUSTOMERS = [
 ];
 let orders=[];
 function genOrder(){
-  const f = pick(FORMS.filter(x=>x.key!=='free'));
+  const f = pick(FORMS.filter(x=>x.key!=='free' && formUnlocked(x)));
   const wantGlaze = Math.random()<.6 ? pick(GLAZES).n : null;
   const minMatch = 55 + Math.floor(rnd(4))*5;                 // 55–70%
   const pay = Math.round((30 + minMatch*.9 + (wantGlaze?18:0) + f.h)/5)*5;
@@ -1942,6 +2001,65 @@ function saveOrders(){ localStorage.setItem('mudember_orders', JSON.stringify(or
 function saveCoins(){ localStorage.setItem('mudember_coins', G.coins); cloudSync(); }
 function coinHUD(){ $('shelfCount').textContent = `${shelfPieces.length} · ${G.coins}c`; }
 
+/* ---------------- collection dex + milestones + shop (replayability) ---------------- */
+function loadDex(){
+  const base={forms:{}, glazes:{}, fireTypes:{}, flags:{}, bestStars:0, claimed:{}};
+  try{ const o=JSON.parse(localStorage.getItem('mudember_dex')||'{}');
+    return Object.assign(base, o, {forms:o.forms||{}, glazes:o.glazes||{}, fireTypes:o.fireTypes||{}, flags:o.flags||{}, claimed:o.claimed||{}}); }
+  catch(e){ return base; }
+}
+let DEX = loadDex();
+function saveDex(){ localStorage.setItem('mudember_dex', JSON.stringify(DEX)); }
+function recordPiece(d){
+  if(d.kind){ DEX.forms[d.kind]=(DEX.forms[d.kind]||0)+1; }
+  pot.layers.forEach(l=>{ if(l.n) DEX.glazes[l.n]=true; });
+  DEX.fireTypes[d.atmos||'oxidation']=true;
+  if(pot.deco && pot.deco.motif!=='none') DEX.flags.deco=true;
+  if(hasParts()) DEX.flags.parts=true;
+  if(d.kind==='mug') DEX.flags.mug=true;
+  if(d.kind==='teapot') DEX.flags.teapot=true;
+  if(pot.carve && pot.carve!=='none') DEX.flags.carve=true;
+  if(d.lustre) DEX.flags.lustre=true;
+  if(d.grind)  DEX.flags.grind=true;
+  DEX.bestStars=Math.max(DEX.bestStars||0, d.stars||0);
+  saveDex();
+}
+const MILESTONES = [
+  {id:'five',    n:'Getting the Hang',  d:'Fire 5 pieces',              pay:20, check:()=>G.fired>=5},
+  {id:'twenty',  n:'Seasoned Potter',   d:'Fire 20 pieces',             pay:50, check:()=>G.fired>=20},
+  {id:'mug',     n:'A Proper Mug',      d:'Make a mug (cup + handle)',  pay:15, check:()=>DEX.flags.mug},
+  {id:'teapot',  n:'Teatime',           d:'Make a teapot',              pay:40, check:()=>DEX.flags.teapot},
+  {id:'decor',   n:'Decorator',         d:'Decorate a piece',           pay:15, check:()=>DEX.flags.deco},
+  {id:'lustre',  n:'Midas Touch',       d:'Add a gold lustre finish',   pay:30, check:()=>DEX.flags.lustre},
+  {id:'fivestar',n:'Masterwork',        d:'Earn a 5-star piece',        pay:60, check:()=>(DEX.bestStars||0)>=5},
+  {id:'raku',    n:'Into the Smoke',    d:'Fire a raku piece',          pay:25, check:()=>DEX.fireTypes.raku},
+  {id:'allfires',n:'Kiln Master',       d:'Try all 5 firing types',     pay:70, check:()=>['oxidation','reduction','raku','wood','salt'].every(t=>DEX.fireTypes[t])},
+  {id:'forms6',  n:'Range',             d:'Make 6 different forms',      pay:35, check:()=>Object.keys(DEX.forms).length>=6},
+  {id:'shelf10', n:'A Full Shelf',      d:'Keep 10 pieces on the shelf',pay:40, check:()=>shelfPieces.length>=10},
+  {id:'glazes8', n:'Colourist',         d:'Use 8 different glazes',     pay:35, check:()=>Object.keys(DEX.glazes).length>=8},
+];
+function checkMilestones(){
+  const awarded=[];
+  MILESTONES.forEach(m=>{ if(!DEX.claimed[m.id] && m.check()){ DEX.claimed[m.id]=true; if(m.pay) G.coins+=m.pay; awarded.push(m); } });
+  if(awarded.length){ saveDex(); saveCoins(); }
+  return awarded;
+}
+const SHOP = [
+  {id:'wire', e:'🪢', n:'Cut-off Wire',   d:'A cleaner foot — every piece earns a little more craft (+★).', cost:60},
+  {id:'bats', e:'🪵', n:'Throwing Bats',  d:'Steadier throwing — the walls wobble less.',                   cost:90},
+  {id:'vent', e:'🌬️', n:'Kiln Vent',     d:'Even bisque heat — far fewer steam and bubble bursts.',        cost:130},
+  {id:'lib',  e:'🎨', n:'Glaze Library',  d:'A wider palette — four glaze colours offered at the tub.',     cost:110},
+];
+function loadShop(){ try{ return JSON.parse(localStorage.getItem('mudember_shop')||'{}'); }catch(e){ return {}; } }
+let SHOPOWN = loadShop();
+function ownsUpgrade(id){ return !!SHOPOWN[id]; }
+function saveShop(){ localStorage.setItem('mudember_shop', JSON.stringify(SHOPOWN)); }
+function buyUpgrade(id){
+  const it=SHOP.find(s=>s.id===id);
+  if(!it || ownsUpgrade(id) || G.coins<it.cost) return false;
+  G.coins-=it.cost; SHOPOWN[id]=true; saveShop(); saveCoins(); return true;
+}
+
 /* kiln cinematic timeline (seconds) */
 const KT = { travel:1.1, doorShut:1.8, heatEnd:5.2, doorOpen:5.9, done:7.0 };
 
@@ -1952,8 +2070,9 @@ const FIRE_TYPE_RISK  = { oxidation:0, reduction:.04, raku:.16, wood:.09, salt:.
 function thinFrac(){ let n=0; for(let i=0;i<RINGS;i++) if(pot.t[i]<.28) n++; return Math.min(n*.045,.4); }
 function bisqueRisks(){
   const wet = clamp((pot.moisture-.12)/.88,0,1);
-  const steam = Math.pow(wet,1.6)*.55;
-  const bubbles = Math.min(pot.bubbles*.05,.3);
+  const vent = ownsUpgrade('vent')?.5:1;                   // a kiln vent evens the heat
+  const steam = Math.pow(wet,1.6)*.55*vent;
+  const bubbles = Math.min(pot.bubbles*.05,.3)*vent;
   const cracks = Math.min(pot.cracks*.06,.3);
   const thin = thinFrac()*.35;
   const blob = pot.collapsed?.1:0;
@@ -1995,7 +2114,7 @@ function guide(html){
   g.style.display='block'; g.innerHTML=html;
 }
 
-const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','cloudScreen','musicScreen','kilnLoadScreen'];
+const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','journalScreen','shopScreen','cloudScreen','musicScreen','kilnLoadScreen'];
 function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
 
 const STAGE_INFO = {
@@ -2023,7 +2142,8 @@ function setPlayHUD(on){
   $('displayBar').style.display='none'; $('displayCard').style.display='none';
   if(!on){ $('stageBox').style.display='none'; $('meters').style.display='none';
            $('chipRow').style.display='none'; $('glazeMethods').style.display='none';
-           $('partRow').style.display='none'; $('decoRow').style.display='none'; guide(null); }
+           $('partRow').style.display='none'; $('decoRow').style.display='none';
+           $('toolModeRow').style.display='none'; guide(null); }
 }
 function updateButtons(){
   const s=G.state;
@@ -2067,7 +2187,8 @@ function showClayChips(){
 }
 function showGlazeChips(){
   const row=$('chipRow'); row.innerHTML=''; row.style.display='flex';
-  const opts=[]; while(opts.length<3){ const g=pick(GLAZES); if(!opts.includes(g)) opts.push(g); }
+  const nOpts = ownsUpgrade('lib')? 4 : 3;                 // glaze library widens the palette
+  const opts=[]; while(opts.length<nOpts){ const g=pick(GLAZES); if(!opts.includes(g)) opts.push(g); }
   // a commission may demand a specific glaze — make sure it's on offer
   if(G.commission && G.commission.glaze && !opts.some(g=>g.n===G.commission.glaze))
     opts[2] = GLAZES.find(g=>g.n===G.commission.glaze) || opts[2];
@@ -2230,6 +2351,37 @@ function showDecoChips(){
   });
 }
 
+/* leather-hard tools, gated by unlocks and decluttered into one mode at a time */
+const LEATHER_TOOLS = { carve:{e:'🔪',n:'Carve'}, parts:{e:'🫙',n:'Attach'}, deco:{e:'🖌️',n:'Decorate'} };
+function leatherToolsAvailable(){
+  const t=[]; if(unlocked('carve')) t.push('carve'); if(unlocked('parts')) t.push('parts'); if(unlocked('deco')) t.push('deco');
+  return t;
+}
+function showLeatherTools(){
+  $('chipRow').style.display='none'; $('partRow').style.display='none'; $('decoRow').style.display='none';
+  const tools=leatherToolsAvailable();
+  if(!tools.length){ $('toolModeRow').style.display='none'; return; }   // nothing unlocked yet — just trim
+  if(tools.length===1){ $('toolModeRow').style.display='none'; showLeatherMode(tools[0]); return; }
+  if(!tools.includes(G.leatherMode)) G.leatherMode=tools[0];
+  showToolModeRow(tools);
+  showLeatherMode(G.leatherMode);
+}
+function showToolModeRow(tools){
+  const row=$('toolModeRow'); row.innerHTML=''; row.style.display='flex';
+  tools.forEach(t=>{
+    const b=document.createElement('button'); b.className='gm'+(G.leatherMode===t?' on':'');
+    b.innerHTML=`<span class="ge">${LEATHER_TOOLS[t].e}</span>${LEATHER_TOOLS[t].n}`;
+    b.onclick=()=>{ G.leatherMode=t; showToolModeRow(tools); showLeatherMode(t); AudioEng.blip(500,.08,'triangle',.07); };
+    row.appendChild(b);
+  });
+}
+function showLeatherMode(mode){
+  $('chipRow').style.display='none'; $('partRow').style.display='none'; $('decoRow').style.display='none';
+  if(mode==='carve') showCarveChips();
+  else if(mode==='parts') showPartChips();
+  else if(mode==='deco') showDecoChips();
+}
+
 /* ---------------- intro ---------------- */
 const INTRO = [
   '“The river studio is yours now.<br><br>Grandmother Odile left you her wheel, her kiln, and one line of advice, chalked over the door:”',
@@ -2306,11 +2458,11 @@ function refreshStageHUD(){
   $('meters').style.display = G.state==='throwing'?'block':'none';
   const leatherHard = G.state==='throwing' && pot.moisture<=.55 && !pot.collapsed;
   if(G.state==='wedge') showClayChips();
-  else if(G.state==='glazeDip'){ $('chipRow').style.display='flex'; $('glazeMethods').style.display='flex'; }
-  else if(leatherHard){ showCarveChips(); showPartChips(); showDecoChips(); }
+  else if(G.state==='glazeDip'){ $('chipRow').style.display='flex'; $('glazeMethods').style.display = unlocked('glazeMethods')?'flex':'none'; }
+  else if(leatherHard) showLeatherTools();
   else $('chipRow').style.display='none';
   if(G.state!=='glazeDip') $('glazeMethods').style.display='none';
-  if(!leatherHard){ $('partRow').style.display='none'; $('decoRow').style.display='none'; }
+  if(!leatherHard){ $('partRow').style.display='none'; $('decoRow').style.display='none'; $('toolModeRow').style.display='none'; }
   updateButtons();
   setStage($('stageSub').textContent);
 }
@@ -2328,7 +2480,7 @@ function toPlan(){
   tub.visible=false; potMesh.visible=true; baseCap.visible=true;
   setCam(0,15,46, 0,9,0);
   const grid=$('formGrid'); grid.innerHTML='';
-  FORMS.forEach(f=>{
+  FORMS.filter(formUnlocked).forEach(f=>{
     const el=document.createElement('button'); el.className='btn formBtn';
     el.innerHTML=`<div class="fEmoji">${f.e}</div>${f.n}<div class="fDesc">${f.d}</div>`;
     el.onclick=()=>{
@@ -2562,10 +2714,16 @@ function toGlazeDip(){
   setStage('coverage 0%');
   setCam(0,18,46, 0,11,0);
   AudioEng.hum(.15);
-  guide('<b>DRAG ↓</b> to dip · pick a colour to layer · <b>🕯️ WAX</b> protects covered glaze');
-  hint('Four ways to glaze — <b>Dip</b>, <b>Pour</b>, <b>Brush</b>, <b>Spray</b> (pick a method below).<br>Switch colour or method and coat again to layer. Heavy coats run in the fire!', 9);
   showGlazeChips();
-  showGlazeMethods();
+  if(unlocked('glazeMethods')){
+    guide('<b>DRAG ↓</b> to dip · pick a colour to layer · <b>🕯️ WAX</b> protects covered glaze');
+    hint('Four ways to glaze — <b>Dip</b>, <b>Pour</b>, <b>Brush</b>, <b>Spray</b> (pick a method below).<br>Switch colour or method and coat again to layer. Heavy coats run in the fire!', 9);
+    showGlazeMethods();
+  } else {
+    pot.glazeMethod='dip'; $('glazeMethods').style.display='none';
+    guide('<b>DRAG ↓</b> to dip the pot into the glaze · pick a colour · <b>🕯️ WAX</b> protects a coat');
+    hint('Deeper = more coverage, longer = thicker coat. Heavy coats run in the fire!<br>Dip, wax, switch colour and dip again for two-tone.', 8);
+  }
 }
 function setGlazeColor(g){
   pot.activeGlaze = g;
@@ -2716,7 +2874,9 @@ function applyGlazeFire(){
     G.commission=null;
   }
   G.fired++; localStorage.setItem('mudember_fired', G.fired);
+  G._pendingUnlock = UNLOCKS[G.fired] || null;      // crossing a threshold reveals a new system
   addToShelf();
+  G._pendingMilestones = checkMilestones();          // award any newly-earned goals
   G.lastPieceData = shelfPieces[0].data;          // reuse the exact same piece on the hero display
   G.lastStars = G.lastPieceData.stars;
   rows.push(['Rating', `<span style="color:#ffcf4a;letter-spacing:2px">${starStr(G.lastStars)}</span> ${G.lastStars.toFixed(1)}`]);
@@ -2730,7 +2890,20 @@ function applyGlazeFire(){
 function showResult(title, flavor, rows, survived=false){
   $('resTitle').textContent = title;
   $('resFlavor').textContent = flavor;
-  $('resRows').innerHTML = rows.map(r=>`<div>${r[0]}<b>${r[1]}</b></div>`).join('');
+  let noticeHtml='';
+  if(survived && G._pendingUnlock){
+    noticeHtml += `<div style="margin:4px 0 8px;padding:10px 12px;border:1.5px solid #ffd27a;border-radius:11px;background:rgba(255,180,90,.15);color:#ffe4ad;text-align:center">
+         <div style="font-weight:bold;letter-spacing:.5px">🎉 UNLOCKED — ${G._pendingUnlock.t}</div>
+         <div style="font-size:12px;opacity:.92;margin-top:3px;line-height:1.4">${G._pendingUnlock.d}</div></div>`;
+  }
+  if(survived && G._pendingMilestones && G._pendingMilestones.length){
+    noticeHtml += G._pendingMilestones.map(m=>
+      `<div style="margin:4px 0 8px;padding:8px 12px;border:1.5px solid #9ee6a0;border-radius:11px;background:rgba(120,230,150,.13);color:#c8f5d0;text-align:center">
+         <div style="font-weight:bold">🏅 GOAL — ${m.n}${m.pay?` · +${m.pay}c`:''}</div>
+         <div style="font-size:12px;opacity:.9;margin-top:2px">${m.d}</div></div>`).join('');
+  }
+  $('resRows').innerHTML = noticeHtml + rows.map(r=>`<div>${r[0]}<b>${r[1]}</b></div>`).join('');
+  if(survived){ G._pendingUnlock = null; G._pendingMilestones = null; }
   G.lastSurvived = survived;
   G.lastTitle = title;
   $('nextBtn').textContent = survived ? 'SEE IT →' : 'BACK TO THE WHEEL →';
@@ -2864,8 +3037,45 @@ $('galleryClose').onclick = ()=>{
 };
 $('galleryBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openGallery('title'); };
 
+/* ---- Journal: goals + collection ---- */
+function renderJournal(){
+  $('journalTag').textContent = `${G.fired} fired · ${G.coins}c · best ${(DEX.bestStars||0).toFixed(1)}★`;
+  const done=MILESTONES.filter(m=>DEX.claimed[m.id]).length;
+  let h=`<div class="jSection">GOALS · ${done}/${MILESTONES.length}</div>`;
+  h+=MILESTONES.map(m=>{ const got=!!DEX.claimed[m.id];
+    return `<div class="jRow ${got?'jDone':''}"><span>${got?'✅':'⬜'} <b>${m.n}</b> — ${m.d}</span>${m.pay?`<span class="jPay">${m.pay}c</span>`:''}</div>`; }).join('');
+  const allFires=['oxidation','reduction','raku','wood','salt'];
+  h+=`<div class="jSection">COLLECTION</div>`;
+  h+=`<div class="jRow"><span>Forms made</span><b>${Object.keys(DEX.forms).length}</b></div>`;
+  h+=`<div class="jRow"><span>Glazes tried</span><b>${Object.keys(DEX.glazes).length}/${GLAZES.length}</b></div>`;
+  h+=`<div class="jRow"><span>Firing types</span><b>${allFires.filter(t=>DEX.fireTypes[t]).length}/5</b></div>`;
+  h+=`<div class="jChips">`+allFires.map(t=>`<span class="jChip ${DEX.fireTypes[t]?'on':''}">${t}</span>`).join('')+`</div>`;
+  $('journalBody').innerHTML=h;
+}
+function openJournal(){ G.state='journal'; setPlayHUD(false); $('muteBtn').style.display='flex'; $('gearBtn').style.display='none'; renderJournal(); showScreen('journalScreen'); }
+$('journalBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openJournal(); };
+$('journalClose').onclick = ()=>{ G.state='title'; showScreen('titleScreen'); };
+
+/* ---- Shop: spend coins on upgrades ---- */
+function renderShop(){
+  $('shopTag').textContent = `${G.coins}c to spend`;
+  $('shopBody').innerHTML = SHOP.map(it=>{
+    const owned=ownsUpgrade(it.id), afford=G.coins>=it.cost;
+    const btn = owned? `<span class="jPay">OWNED ✓</span>`
+      : `<button class="siBuy" data-id="${it.id}" ${afford?'':'disabled'}>${it.cost}c</button>`;
+    return `<div class="shopItem ${owned?'owned':''}"><div class="siTop"><span class="siName">${it.e} ${it.n}</span>${btn}</div><div class="siDesc">${it.d}</div></div>`;
+  }).join('');
+  $('shopBody').querySelectorAll('.siBuy').forEach(b=>b.onclick=()=>{
+    if(buyUpgrade(b.dataset.id)){ AudioEng.chime(1); banner('purchased — '+SHOP.find(s=>s.id===b.dataset.id).n, 1.6); renderShop(); }
+    else { banner('not enough coins', 1.3, true); }
+  });
+}
+function openShop(){ G.state='shop'; setPlayHUD(false); $('muteBtn').style.display='flex'; $('gearBtn').style.display='none'; renderShop(); showScreen('shopScreen'); }
+$('shopBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openShop(); };
+$('shopClose').onclick = ()=>{ G.state='title'; $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : ''; showScreen('titleScreen'); };
+
 /* ---------------- cloud save ---------------- */
-const SYNC_KEYS = ['mudember_shelf','mudember_fired','mudember_coins','mudember_orders','mudember_clay'];
+const SYNC_KEYS = ['mudember_shelf','mudember_fired','mudember_coins','mudember_orders','mudember_clay','mudember_dex','mudember_shop'];
 function genCode(){
   const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', buf=new Uint8Array(12);
   (crypto.getRandomValues?crypto.getRandomValues(buf):buf.forEach((_,i)=>buf[i]=Math.floor(Math.random()*256)));
@@ -2879,6 +3089,7 @@ function applySave(o){
   // rebuild in-memory state from the freshly-written storage
   G.fired = +(localStorage.getItem('mudember_fired')||0);
   G.coins = +(localStorage.getItem('mudember_coins')||0);
+  DEX = loadDex(); SHOPOWN = loadShop();
   orders=[]; loadOrders();
   const sc = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay')); if(sc) pot.clay=sc;
   shelfPieces.forEach(p=>{ scene.remove(p.mesh); disposePiece(p.mesh); });
@@ -3062,6 +3273,14 @@ $('fireBtn').onclick = ()=>{
 function openKilnLoad(){
   G.state='kilnLoad';
   setPlayHUD(false); $('muteBtn').style.display='flex'; $('musicBtn').style.display='flex';
+  // gate firing types + cold finishing by progress
+  const spec=unlocked('specialty');
+  const rb=$('atmosSegs').querySelector('[data-v="reduction"]'); if(rb) rb.style.display = unlocked('reduction')?'':'none';
+  ['raku','wood','salt'].forEach(v=>{ const b=$('atmosSegs').querySelector('[data-v="'+v+'"]'); if(b) b.style.display = spec?'':'none'; });
+  $('coldFinishRow').style.display = spec?'':'none';
+  const cur=$('atmosSegs').querySelector('[data-v="'+SET.atmos+'"]');
+  if(cur && cur.style.display==='none'){ SET.atmos='oxidation'; saveSet();
+    $('atmosSegs').querySelectorAll('.seg').forEach(s=>s.classList.toggle('on', s.dataset.v==='oxidation')); }
   $('atmosHint').textContent = ATMOS_HINT[SET.atmos];
   showScreen('kilnLoadScreen');
 }
@@ -3211,8 +3430,8 @@ function tick(now){
       clayMat.roughness = lerp(.5,.85,1-pot.moisture);
       const leather = pot.moisture<=.55;
       if(leather!==wasLeather){ wasLeather=leather; updateButtons();
-        if(leather){ banner('leather-hard — trim, carve, attach & decorate', 1.8); showCarveChips(); showPartChips(); showDecoChips(); }
-        else { $('chipRow').style.display='none'; $('partRow').style.display='none'; $('decoRow').style.display='none'; } }
+        if(leather){ banner(leatherToolsAvailable().length? 'leather-hard — trim & decorate now' : 'leather-hard — trim the walls now', 1.8); showLeatherTools(); }
+        else { $('chipRow').style.display='none'; $('partRow').style.display='none'; $('decoRow').style.display='none'; $('toolModeRow').style.display='none'; } }
       if(pot.moisture>.5 && Math.random()<dt*2.2) emitWisp();
     }
     const inst = pot.collapsed? 0 : computeInstability();
