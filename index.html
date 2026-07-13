@@ -161,6 +161,23 @@
     max-width:min(78%, 340px); line-height:1.45; pointer-events:none; }
   #guideBar b { color:#ffd27a; }
 
+  /* first-time gesture coaching — a demonstrating hand that fades once you do it */
+  #gestureHint { position:absolute; left:50%; top:55%; transform:translate(-50%,-50%); display:none;
+    pointer-events:none; z-index:22; text-align:center; }
+  #gestureHint.show { display:block; }
+  #gestureHint .ghand { font-size:46px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.7)); }
+  #gestureHint .glabel { margin-top:4px; font-size:12.5px; color:#ffe9c8; background:rgba(20,12,10,.78);
+    border:1.5px solid rgba(190,120,80,.55); border-radius:20px; padding:5px 13px; display:inline-block; letter-spacing:.3px; }
+  #gestureHint.tap  .ghand { animation:gtap 1.1s ease-in-out infinite; }
+  #gestureHint.hold .ghand { animation:ghold 1.5s ease-in-out infinite; }
+  #gestureHint.drag .ghand { animation:gdrag 1.6s ease-in-out infinite; }
+  #gestureHint.orbit .ghand { animation:gdrag 1.7s ease-in-out infinite; }
+  @keyframes gtap  { 0%,100%{transform:translateY(0) scale(1);} 45%{transform:translateY(9px) scale(.88);} }
+  @keyframes ghold { 0%{transform:scale(1);opacity:1;} 50%{transform:scale(.84);opacity:.65;} 100%{transform:scale(1);opacity:1;} }
+  @keyframes gdrag { 0%,100%{transform:translateX(-24px) rotate(-6deg);} 50%{transform:translateX(24px) rotate(6deg);} }
+  #fireBtn.pulse { animation:btnPulse 1.2s ease-in-out infinite; }
+  @keyframes btnPulse { 0%,100%{box-shadow:0 4px 14px rgba(0,0,0,.5), 0 0 0 0 rgba(255,150,90,.5);} 50%{box-shadow:0 4px 14px rgba(0,0,0,.5), 0 0 14px 4px rgba(255,150,90,.6);} }
+
   /* form picker */
   .formGrid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:16px; width:100%; max-width:340px; }
   .formBtn .fEmoji { font-size:26px; }
@@ -302,6 +319,7 @@
   </div>
 
   <div id="guideBar"></div>
+  <div id="gestureHint"><div class="ghand">👆</div><div class="glabel"></div></div>
   <div id="banner"></div>
   <div id="hint"></div>
 
@@ -1577,6 +1595,7 @@ function spawnShards(){
     m.castShadow = renderer.shadowMap.enabled;
     scene.add(m); shards.push(m);
   }
+  dustPuff(potRoot.position.x, potRoot.position.y+pot.h*.4, potRoot.position.z);   // a puff of dust on the break
 }
 function clearShards(){ shards.forEach(m=>{scene.remove(m); m.material.dispose();}); shards.length=0; }
 
@@ -1625,6 +1644,31 @@ function burstSparks(){
     s.v.set(fwd.x*rnd(2,9)+rnd(-3,3), rnd(1,7), fwd.z*rnd(2,9)+rnd(-3,3));
     s.life = rnd(.5,1.4);
   });
+}
+/* ---- extra juice (heavy bits gated to HIGH graphics) ---- */
+const hiFX = ()=> SET.gfx!=='low';
+const _bbCol = new THREE.Color(), _fwd = new THREE.Vector3();
+let bloomFlash = 0;
+// blackbody-ish glow ramp: dull red → orange → yellow-white as the kiln climbs
+function blackbody(t){ _bbCol.setRGB(1, clamp(t*0.92-0.05,0,1)*0.86, clamp(t-0.55,0,1)*0.92); return _bbCol; }
+function emitEmbers(n){
+  _fwd.set(Math.sin(kilnG.rotation.y),0,Math.cos(kilnG.rotation.y));
+  let k=0;
+  for(const s of sparks){ if(s.life>0) continue;
+    s.p.copy(KILN_POS); s.p.x += _fwd.x*3 + rnd(-2.5,2.5); s.p.y += rnd(7,15); s.p.z += _fwd.z*3 + rnd(-1.5,1.5);
+    s.v.set(rnd(-1,1), rnd(2,5.5), rnd(-1,1)); s.life = rnd(.6,1.6);
+    if(++k>=n) break; }
+}
+// a shower of sparks + a bloom pop to celebrate a flawless piece, an unlock, or a challenge
+function celebrate(cx,cy,cz){
+  for(const s of sparks){ s.p.set((cx||0)+rnd(-2,2), (cy||6)+rnd(-1,3), (cz||0)+rnd(-2,2));
+    s.v.set(rnd(-6,6), rnd(5,12), rnd(-6,6)); s.life = rnd(.8,1.7); }
+  bloomFlash = Math.max(bloomFlash, .6);
+}
+function dustPuff(cx,cy,cz){   // soft grey burst when a piece shatters
+  for(let i=0;i<SPLAT_N;i++){ const s=splats[i]; const a=rnd(Math.PI*2), rr=rnd(0,2.5);
+    s.p.set((cx||0)+Math.cos(a)*rr, (cy||4)+rnd(-1,2), (cz||0)+Math.sin(a)*rr);
+    s.v.set(Math.cos(a)*rnd(1,5), rnd(1,4), Math.sin(a)*rnd(1,5)); s.life=rnd(.4,.9); }
 }
 
 /* ---------------- pot state & simulation ---------------- */
@@ -1899,6 +1943,17 @@ const FORM_UNLOCK = { free:0, cup:0, bowl:0, mug:0, plate:2, tumbler:2, vase:3, 
 const FEATURE_UNLOCK = { carve:1, glazeMethods:3, parts:4, deco:5, reduction:6, specialty:8 };
 const unlocked = key => G.fired >= (FEATURE_UNLOCK[key]||0);
 const formUnlocked = f => G.fired >= (FORM_UNLOCK[f.key]||0);
+function nextUnlockText(){
+  const th=[1,2,3,4,5,6,8].find(n=>n>G.fired && UNLOCKS[n]);
+  if(!th) return '';
+  const need=th-G.fired;
+  return `${need} more firing${need>1?'s':''} → ${UNLOCKS[th].t}`;
+}
+function refreshFiredTag(){
+  const base = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : 'Welcome — let\'s make your first pot';
+  const nu = nextUnlockText();
+  $('firedTag').innerHTML = base + (nu? `<br><span style="opacity:.72;font-size:12px">🔓 ${nu}</span>` : '');
+}
 const UNLOCKS = {   // a one-time celebratory notice shown the piece you cross the threshold
   1:{t:'✏️ Carving', d:'At leather-hard you can now carve patterns into the walls.'},
   2:{t:'🍽️ New forms', d:'Plate and Tumbler are on the noticeboard now.'},
@@ -2203,6 +2258,22 @@ function guide(html){
   if(!html){ g.style.display='none'; return; }
   g.style.display='block'; g.innerHTML=html;
 }
+/* first-time gesture coaching: a demonstrating hand shown once per mechanic */
+let COACHED = (()=>{ try{ return JSON.parse(localStorage.getItem('mudember_coached')||'{}'); }catch(e){ return {}; } })();
+let coachTimer=0;
+function coach(key, label, opts){
+  opts=opts||{};
+  if(COACHED[key]) return;
+  COACHED[key]=true; try{ localStorage.setItem('mudember_coached', JSON.stringify(COACHED)); }catch(e){}
+  const el=$('gestureHint'); if(!el) return;
+  const anim=opts.anim||key;
+  el.querySelector('.ghand').textContent = anim==='orbit'?'✌️':'👆';
+  el.querySelector('.glabel').textContent = label;
+  el.className='show '+anim;
+  el.style.left=(opts.x!=null?opts.x:50)+'%'; el.style.top=(opts.y!=null?opts.y:56)+'%';
+  clearTimeout(coachTimer); coachTimer=setTimeout(stopCoach, opts.dur||5200);
+}
+function stopCoach(){ const el=$('gestureHint'); if(el) el.className=''; }
 
 const SCREENS = ['titleScreen','introScreen','settingsScreen','planScreen','resultScreen','galleryScreen','journalScreen','shopScreen','challengeScreen','cloudScreen','musicScreen','kilnLoadScreen'];
 function showScreen(id){ SCREENS.forEach(s=>$(s).style.display = s===id?'flex':'none'); }
@@ -2248,6 +2319,7 @@ function updateButtons(){
   if(s==='wedge'||s==='center'){ fire.disabled=true; fire.innerHTML=(s==='wedge'?'WEDGE FIRST':'CENTRE FIRST')+'<span class="risk" id="riskTag">the kiln can wait</span>'; }
   else if(s==='throwing'){ fire.disabled=false; fire.innerHTML=(pot.collapsed?'BISQUE THE BLOB 🔥':'BISQUE FIRE 🔥')+'<span class="risk" id="riskTag"></span>'; }
   else if(s==='glazeDip'){ fire.disabled=false; fire.innerHTML='GLAZE FIRE 🔥<span class="risk" id="riskTag"></span>'; }
+  fire.classList.toggle('pulse', firstEver() && !fire.disabled && fire.style.display!=='none');   // draw the eye to the next step on the very first pot
 }
 
 /* ---------------- chips (clay bodies / glazes) ---------------- */
@@ -2475,9 +2547,8 @@ function showLeatherMode(mode){
 /* ---------------- intro ---------------- */
 const INTRO = [
   '“The river studio is yours now.<br><br>Grandmother Odile left you her wheel, her kiln, and one line of advice, chalked over the door:”',
-  '“<b>The clay remembers every hurry.</b><br><br>Wedge out the air bubbles. Centre it true — an off-centre pot wobbles forever. Pull too fast and it wobbles anyway. Fuss too long and it stiffens.”',
-  '“At leather-hard, trim the walls even. Then the first fire — the bisque. Wet clay bursts in the bisque. Air bubbles too.”',
-  '“What survives, you dip in glaze and fire again. Heavy glaze runs. Thin walls split. What survives <i>that</i> goes on the shelf… and the shelf is how they\'ll remember you.”',
+  '“<b>The clay remembers every hurry.</b><br><br>Wedge, centre, throw — then gamble it in the kiln, twice. What survives goes on the shelf, and the shelf is how they\'ll remember you.”',
+  '“I\'ll show you each step as you go.<br><br>Now sit down. Let\'s make something.”',
 ];
 let introIdx=0;
 function showIntro(){
@@ -2612,6 +2683,7 @@ function toWedge(){
   guide('<b>TAP</b> the clay a few times to squeeze the air bubbles out');
   hint(firstEver()? 'Welcome! Step 1 of 6. Just tap the lump until the bubble count hits zero.'
                   : 'Bubbles explode in the kiln. Pick a clay body below.', 6);
+  coach('wedge','tap to wedge the air out', {anim:'tap', y:52});
 }
 function firstEver(){ return G.fired===0 && shelfPieces.length===0; }
 function toCenter(){
@@ -2623,6 +2695,7 @@ function toCenter(){
   guide('<b>PRESS &amp; HOLD</b> the spinning clay to centre it');
   hint(firstEver()? 'Step 2 of 6. Hold your finger on the clay until it reads “centred”.'
                   : 'Off-centre clay wobbles forever.', 6);
+  coach('center','press &amp; hold to centre', {anim:'hold', y:52});
 }
 function toThrowing(){
   G.state='throwing';
@@ -2633,6 +2706,7 @@ function toThrowing(){
   guide('<b>DRAG ↔</b> to shape the wall · <b>DRAG ↑</b> near the rim to grow taller');
   if(firstEver())
     hint('Step 3 of 6. Follow the blue guide. Tap <b>🫧 RIB</b> anytime to smooth it true.<br>This first pot can\'t break — experiment freely, then <b>BISQUE FIRE</b>.', 10);
+  coach('throw','drag to shape the wall', {anim:'drag', y:48});
 }
 function startKiln(kind){
   G.state = kind==='bisque'?'bisque':'glazefire';
@@ -2975,6 +3049,9 @@ function applyGlazeFire(){
   // best-piece record
   if(G.lastStars > (+(localStorage.getItem('mudember_beststars')||0))) localStorage.setItem('mudember_beststars', G.lastStars);
   AudioEng.chime(flawless?1.2:1);
+  G._celebrate = flawless || !!G._pendingUnlock
+    || (G._pendingChallenges && G._pendingChallenges.length>0)
+    || (G._pendingMilestones && G._pendingMilestones.length>0);   // sparks on the payoff
   showResult(title, flavor, rows, true);
 }
 /* prepares the result card; the kiln timeline shows it when the door is open */
@@ -3045,6 +3122,8 @@ function enterDisplay(){
   framePiece();
   banner('here it is ✨', 1.4);
   hint('<b>Drag</b> to turn it in the light — tip it up to read the mark on the foot. <b>Pinch</b> to zoom.', 6);
+  coach('inspect','drag to turn it · pinch to zoom', {anim:'drag', y:62});
+  if(G._celebrate){ celebrate(0, (G.lastPieceData? G.lastPieceData.h*.5:5), 0); G._celebrate=false; }
 }
 window.__enterDisplay = enterDisplay;
 $('dispNew').onclick = ()=>{ $('displayBar').style.display='none'; $('displayCard').style.display='none'; enterStudio(); };
@@ -3189,7 +3268,7 @@ function renderShop(){
 }
 function openShop(){ G.state='shop'; setPlayHUD(false); $('muteBtn').style.display='flex'; $('gearBtn').style.display='none'; renderShop(); showScreen('shopScreen'); }
 $('shopBtn').onclick = ()=>{ AudioEng.init(); AudioEng.resume(); openShop(); };
-$('shopClose').onclick = ()=>{ G.state='title'; $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : ''; showScreen('titleScreen'); };
+$('shopClose').onclick = ()=>{ G.state='title'; refreshFiredTag(); showScreen('titleScreen'); };
 
 /* ---- Challenges: tougher star-gated goals ---- */
 function renderChallenges(){
@@ -3227,7 +3306,7 @@ function applySave(o){
   const sc = CLAYS.find(c=>c.key===localStorage.getItem('mudember_clay')); if(sc) pot.clay=sc;
   shelfPieces.forEach(p=>{ scene.remove(p.mesh); disposePiece(p.mesh); });
   shelfPieces.length=0; loadShelf();
-  $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
+  refreshFiredTag();
 }
 async function cloudHealth(){ try{ const r=await fetch('/api/studio?health=1'); return await r.json(); }catch(e){ return {configured:false, unreachable:true}; } }
 async function cloudPull(id){ const r=await fetch('/api/studio?id='+encodeURIComponent(id)); if(!r.ok) throw new Error('pull '+r.status); return (await r.json()).data; }
@@ -3454,6 +3533,7 @@ function potScreenY(worldY){
 }
 renderer.domElement.addEventListener('pointerdown', e=>{
   AudioEng.init(); AudioEng.resume();
+  stopCoach();
   ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
   if(ptrs.size>=2){ touching=false; orbitDrag=false; pinchDist=ptrDist(); const m=ptrMid(); lastX=m.x; lastY=m.y; return; }
   // secondary mouse button, or the display view → free orbit with one pointer
@@ -3516,7 +3596,8 @@ addEventListener('pointermove', e=>{
         pot.shock[i]=Math.min(pot.shock[i]+Math.abs(pot.h-oldH)*.04*(1+(1-pot.moisture)*1.6), 1.3);
       }
       if(Math.random()<.3) AudioEng.squish();
-      if(Math.random()<.4) emitSplat(pot.h*.9, pot.r[RINGS-2]);
+      if(Math.random()<.6) emitSplat(pot.h*.9, pot.r[RINGS-2]);
+      if(hiFX() && Math.random()<.4) emitSplat(pot.h*rnd(.4,.95), pot.r[RINGS-2]+.3);   // extra flung flecks
     }
   }
   else if(Math.abs(dx)>0){
@@ -3535,7 +3616,8 @@ addEventListener('pointermove', e=>{
       pot.cracks++; AudioEng.crack(); banner('the clay is cracking!', 1.2, true);
     }
     if(Math.random()<.35) AudioEng.squish();
-    if(Math.random()<.5) emitSplat(fr*pot.h, pot.r[i0]+.2);
+    if(Math.random()<.7) emitSplat(fr*pot.h, pot.r[i0]+.2);
+    if(hiFX() && Math.abs(dr)>.03 && Math.random()<.5) emitSplat(fr*pot.h, pot.r[i0]+.4);
   }
 });
 
@@ -3719,11 +3801,13 @@ function tick(now){
       else          f.temp=Math.max(0,    f.temp-dt*0.34);
       if(f.temp>0.05) f.hw += f.temp*f.temp*dt*0.20;   // heat-work integral
       const glow=f.temp;
-      clayMat.emissiveIntensity = 0.14 + glow*1.15;
-      kilnLight.intensity = glow*150 + 40;
+      clayMat.emissive.copy(blackbody(glow));                 // glow ramps red → white-hot
+      clayMat.emissiveIntensity = 0.14 + glow*1.3;
+      kilnLight.intensity = glow*160 + 40;                    // (colour keeps the atmosphere tint from startKiln)
       peephole.material.opacity = Math.min(1, 0.3+glow);
       AudioEng.rumble(.4 + glow*.55);
       if(glow>.6){ kilnG.position.x += rnd(-.05,.05)*glow; kilnG.position.z += rnd(-.05,.05)*glow; }
+      if(hiFX() && glow>.5 && Math.random()<glow*glow*.5) emitEmbers(2);   // embers stream off at heat
       // overfire alarm as you cross out of the clean window; forced cut at the guard cone
       const sc=f.sc;
       if(f.hw>=sc.target+sc.perfect && !f.warned){ f.warned=true; AudioEng.warn(.7); }
@@ -3734,6 +3818,7 @@ function tick(now){
     else if(f.phase==='reveal'){
       potRoot.position.copy(POT_KILN);
       const cool=clamp(1-t/1.1,0,1);
+      clayMat.emissive.copy(blackbody(cool));                 // cools red then dark
       clayMat.emissiveIntensity=cool*1.0;
       kilnLight.intensity=cool*120;
       let doorK=1;
@@ -3822,6 +3907,15 @@ function tick(now){
   }
   if(displayMesh && (G.state==='display'||G.state==='photo') && ptrs.size===0) displayMesh.rotation.y = spin;   // hold still while you orbit it
 
+  // dynamic bloom: the kiln blooms brighter at peak heat, plus a pop for celebrations (HIGH only)
+  if(bloomPass){
+    let bs=0.5;
+    if(inKiln && G.fire) bs = 0.5 + (G.fire.temp||0)*0.6;
+    bs += bloomFlash;
+    bloomPass.strength = bs;
+    if(bloomFlash>0) bloomFlash = Math.max(0, bloomFlash - dt*1.1);
+  }
+
   wheel.rotation.y = spin;
 
   /* eased camera rig + sway + wobble shake */
@@ -3863,13 +3957,13 @@ loadShelf();
 applyKilnSize();
 setBackground(BGSTATE.active);
 applyDecor();
-$('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : '';
+refreshFiredTag();
 showScreen('titleScreen');
 $('muteBtn').style.display='flex';
 $('musicBtn').style.display='flex';
 requestAnimationFrame(tick);
 // if this device is linked to a cloud studio, pull the latest on load
-cloudBoot().then(()=>{ $('firedTag').textContent = G.fired>0? `${G.fired} pieces fired · ${G.coins}c earned` : ''; });
+cloudBoot().then(()=>{ refreshFiredTag(); });
 </script>
 </body>
 </html>
